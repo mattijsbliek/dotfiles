@@ -12,6 +12,7 @@ call vundle#begin()
 " let Vundle manage Vundle, required
 Plugin 'gmarik/Vundle.vim'
 Plugin 'https://github.com/scrooloose/nerdtree'
+Plugin 'JazzCore/ctrlp-cmatcher'
 Plugin 'https://github.com/ervandew/supertab'
 Plugin 'https://github.com/bling/vim-airline'
 Plugin 'https://github.com/ctrlpvim/ctrlp.vim'
@@ -27,6 +28,7 @@ Plugin 'godlygeek/tabular'
 Plugin 'plasticboy/vim-markdown'
 Plugin 'trusktr/seti.vim'
 Plugin 'elzr/vim-json'
+Plugin 'chankaward/vim-railscasts-theme'
 
 Bundle 'rstacruz/vim-ultisnips-css'
 Bundle 'cakebaker/scss-syntax.vim'
@@ -67,8 +69,17 @@ set ttyfast                 " Improves redrawing
 set wildmenu            " visual autocomplete for command menu
 
 " Set color theme
-colorscheme peacock
+" colorscheme peacock
 "colorscheme seti
+"colorscheme railscasts
+colorscheme kalisi
+set background=dark
+
+" Turn off blinking cursor in normal mode
+set gcr=n:blinkon0
+
+" Set terminal to 256 colors
+set t_Co=256
 
 " Enable line highlight
 set cursorline
@@ -206,6 +217,8 @@ endfunction
 
 autocmd Vimenter * call AirLineMattijs()
 
+syntax on
+
 set laststatus=2
 set ttimeoutlen=50
 
@@ -230,9 +243,11 @@ set noerrorbells         " don't beep
 
 " Use scss_lint for syntax checking
 let g:syntastic_scss_checkers = ['scss_lint']
+let g:syntastic_php_checkers = ['php']
 
 " Ignore unrecognized html tags
-let g:syntastic_html_tidy_ignore_errors = [ 'trimming empty', 'is not recognized', 'discarding unexpected'  ]
+let g:syntastic_html_tidy_ignore_errors = ['Unnecessary parent selector', 'proprietary attribute', 'missing </a>', 'trimming empty', 'is not recognized', 'discarding unexpected'  ]
+let g:syntastic_php_ignore_errors = ['Line indented incorrectly']
 
 " Move to beginning and end of line with H and L
 onoremap H ^
@@ -271,9 +286,31 @@ noremap <silent> <leader>m :CtrlP<CR>
 " leader key + j to open CtrlP in buffer mode
 noremap <silent> <leader>j :CtrlPBuffer<CR>
 
-let g:ctrlp_custom_ignore = '_site\|node_modules\|bower_components\|\.git$\|DS_Store\|build'
+" Set filetype to html
+nnoremap <leader>fth :set ft=html<CR>
+
+" Set filetype to php
+nnoremap <leader>ftp :set ft=php<CR>
+
+let g:ctrlp_custom_ignore = {
+	\ 'dir': 'dist\|node_modules\|bower_components\|\.git$\|build',
+	\ 'file': '\.DS_Store'
+	\ }
 let g:ctrlp_max_files = 40000
 let g:ctrlp_show_hidden = 1
+let g:ctrlp_match_func = {'match' : 'matcher#cmatch' }
+
+" The Silver Searcher
+if executable('ag')
+  " Use ag over grep
+  "set grepprg=ag\ --nogroup\ --nocolor
+
+  " Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
+  "let g:ctrlp_user_command = 'ag %s -i --nocolor -g ""'
+
+  " ag is fast enough that CtrlP doesn't need to cache
+  "let g:ctrlp_use_caching = 0
+endif
 
 " remap : to ;
 nnoremap ; :
@@ -334,3 +371,42 @@ let g:UltiSnipsExpandTrigger="<tab>"
 let g:UltiSnipsJumpForwardTrigger="<c-j>"
 let g:UltiSnipsJumpBackwardTrigger="<c-k>"
 let g:UltiSnipsEditSplit="vertical"
+
+" Create snippets from selected text
+function! s:get_visual_selection()
+      " Why is this not a built-in Vim script function?!
+      let [lnum1, col1] = getpos("'<")[1:2]
+      let [lnum2, col2] = getpos("'>")[1:2]
+      let lines = getline(lnum1, lnum2)
+      let lines[-1] = lines[-1][: col2 - (&selection == 'inclusive' ? 1 : 2)]
+      let lines[0] = lines[0][col1 - 1:]
+      return join(lines, "\n")
+endfunction
+
+function! CreateSnippet()
+    let txt = s:get_visual_selection()
+    let snippetId = substitute(txt, " ", "_", "g")
+    let defaultTxt = input("What's the default text? ")
+    if strlen(defaultTxt) == 0
+        return
+    endif
+    let defaultLocale = input("What's the default locale? (nl) ")
+    if strlen(defaultLocale) == 0
+        let defaultLocale = "nl"
+    endif
+    if strlen(txt) == 0
+        echom "No text selected"
+        return
+    endif
+    execute ":write"
+    execute ":edit application/configs/snippets.ini"
+    execute "/\\\v\\\[staging\\\ :\\\ production\\\]"
+    execute "normal! Osnippets." . snippetId . ".has_text = 1"
+    execute "normal! osnippets." . snippetId . ".text." . defaultLocale . " = \"" . defaultTxt . "\""
+    execute "normal! o"
+    execute ":nohl"
+    execute ":write"
+    execute ":b#"
+endfunction
+
+vnoremap <C-s> :call CreateSnippet()<cr>

@@ -12,6 +12,13 @@ fi
 # EXPORT
 # -----------------------------------------
 
+export CLICOLOR=1
+export TERM=xterm-color
+
+# Fix C compiler for ctrlp-cmatcher (https://github.com/JazzCore/ctrlp-cmatcher/)
+export CFLAGS=-Qunused-arguments
+export CPPFLAGS=-Qunused-arguments
+
 # Set PATH
 export PATH=/usr/local/php5/bin:$PATH
 export PATH=$PATH:/usr/local/bin:$PATH
@@ -19,6 +26,7 @@ export PATH=$PATH:/Users/mattijs/pear/bin
 export PATH=$PATH:/Users/mattijs/Development/adt-bundle-mac/sdk/tools
 export PATH=$PATH:/Users/mattijs/Development/adt-bundle-mac/sdk/platform-tools
 export PATH=$PATH:/usr/local/share/npm/bin
+export PATH=$PATH:/opt/bin
 export PATH=$PATH:./vendor/bin
 
 # Add rvm gems and nginx to the path
