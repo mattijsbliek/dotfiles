@@ -38,24 +38,36 @@ snippet bbw "border-bottom-width"
 border-bottom-width: $1;
 endsnippet
 
+snippet mih "min-height"
+min-height: $1;
+endsnippet
+
 snippet mi "Min-width media query mixin"
-@include bp-min(${1:$small}) {
+@media (min-width: ${1:breakpoint('small')}) {
 	$2
 }
 endsnippet
 
 snippet ma "Max-width media query mixin"
-@include bp-max(${1:$small}) {
+@media (max-width: ${1:breakpoint('small')}) {
 	$2
 }
 endsnippet
 
 snippet mima "Max-width media query mixin"
-@include bp-min-max(${1:$small}, ${2:$medium}) {
+@media (min-width: ${1:breakpoint('small')}) and (max-width: ${2:breakpoint('medium')}) {
 	$3
 }
 endsnippet
 
 snippet lsn "list-style-type: none"
 list-style-type: none; $1
+endsnippet
+
+snippet fw "font-weight"
+font-weight: ${1:bold};
+endsnippet
+
+snippet miw "min-width"
+min-width: $1;
 endsnippet

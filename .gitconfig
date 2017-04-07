@@ -1,0 +1,31 @@
+[core]
+	filemode = false
+	editor = mvim -f
+	autocrlf = input
+	excludesfile = /Users/mattijs/.gitignore_global
+	pager = diff-so-fancy | less --tabs=4 -RFX
+[user]
+	name = Mattijs Bliek
+	email = mattijs@mollie.com
+[alias]
+	co = checkout
+	ci = commit
+	st = status
+	br = branch
+	hist = log --pretty=format:\"%h %ad | %s%d [%an]\" --graph --date=short
+	ls = log --pretty=format:"%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]" --decorate
+	ll = log --pretty=format:"%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]" --decorate --numstat
+	type = cat-file -t
+	dump = cat-file -p
+	changelog = diff-tree --no-commit-id --name-only
+    amend = commit --amend -C HEAD
+[push]
+	default = upstream
+[merge]
+	tool = vimdiff
+[difftool "sourcetree"]
+	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
+	path = 
+[mergetool "sourcetree"]
+	cmd = /Applications/SourceTree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
+	trustExitCode = true

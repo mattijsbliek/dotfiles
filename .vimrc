@@ -1,5 +1,4 @@
 " vim:fdm=marker
-
 " Vundle plugins {{{
 
 " This must be first, because it changes other options as side effect
@@ -10,39 +9,46 @@ filetype off " required
 set rtp+=~/.vim/bundle/Vundle.vim
 
 call vundle#begin()
-" alternatively, pass a path where Vundle should install plugins
-"call vundle#begin('~/some/path/here')
 
 " let Vundle manage Vundle, required
-
-"Plugin 'airblade/vim-gitgutter'
-Plugin 'bling/vim-airline'
-Plugin 'cakebaker/scss-syntax.vim'
-Plugin 'christoomey/vim-sort-motion'
-Plugin 'ctrlpvim/ctrlp.vim'
-"Plugin 'dhruvasagar/vim-vinegar'
-Plugin 'elzr/vim-json'
-Plugin 'ervandew/supertab'
 Plugin 'gmarik/Vundle.vim'
-Plugin 'godlygeek/tabular'
-Plugin 'honza/vim-snippets'
-Plugin 'jazzcore/ctrlp-cmatcher'
-"Plugin 'kchmck/vim-coffee-script'
-Plugin 'moll/vim-bbye'
-Plugin 'pangloss/vim-javascript'
-"Plugin 'rizzatti/dash.vim'
-Plugin 'rking/ag.vim'
-Plugin 'rstacruz/vim-ultisnips-css'
-Plugin 'scrooloose/nerdcommenter'
-Plugin 'scrooloose/nerdtree'
-Plugin 'scrooloose/syntastic'
-Plugin 'SirVer/ultisnips'
-Plugin 'terryma/vim-multiple-cursors'
+
+" Staples
+Plugin 'vim-airline/vim-airline'
 Plugin 'tpope/vim-fugitive'
 Plugin 'tpope/vim-repeat'
-Plugin 'tpope/vim-surround'
-"Plugin 'vim-scripts/gitignore'
+Plugin 'scrooloose/nerdcommenter'
 Plugin 'YankRing.vim'
+Plugin 'tpope/vim-sleuth'
+Plugin 'neomake/neomake'
+Plugin 'rking/ag.vim'
+Plugin 'ctrlpvim/ctrlp.vim'
+Plugin 'jazzcore/ctrlp-cmatcher'
+Plugin 'scrooloose/nerdtree'
+Plugin 'rizzatti/dash.vim'
+Plugin 'tpope/vim-surround'
+
+" Language specific
+Plugin 'kewah/vim-stylefmt'
+Plugin 'cakebaker/scss-syntax.vim'
+Plugin 'pangloss/vim-javascript' " JS syntax highlighting
+Plugin 'mxw/vim-jsx' " JSX syntax highlighting
+Plugin 'elzr/vim-json'
+Plugin 'flowtype/vim-flow'
+Plugin 'mustache/vim-mustache-handlebars'
+
+" Autocompletion
+Plugin 'rstacruz/vim-ultisnips-css'
+Plugin 'ervandew/supertab'
+Plugin 'SirVer/ultisnips'
+Plugin 'jiangmiao/auto-pairs'
+Plugin 'alvan/vim-closetag'
+
+" Nice to haves
+Plugin 'christoomey/vim-sort-motion'
+Plugin 'godlygeek/tabular'
+Plugin 'terryma/vim-multiple-cursors'
+Plugin 'moll/vim-bbye'
 Plugin 'zirrostig/vim-schlepp'
 
 " All of your Plugins must be added before the following line
@@ -55,28 +61,28 @@ filetype plugin indent on
 " }}}
 " Plugin configuration {{{
 
-" let g:gitgutter_sign_column_always = 1
-
 " make all sorts case insensitive and remove duplicates.
- let g:sort_motion_flags = "ui"
+let g:sort_motion_flags = "ui"
 
 " Don't fold markdown
 " let g:vim_markdown_folding_disabled=1
 
 " Stuff for CtrlP
 let g:ctrlp_custom_ignore = {
-	\ 'dir': 'dist\|node_modules\|bower_components\|\.git$\|build',
+	\ 'dir': 'dist\|vendor\|node_modules\|bower_components\|\.git$\|build',
 	\ 'file': '\.DS_Store'
 	\ }
 let g:ctrlp_max_files = 10000
 let g:ctrlp_show_hidden = 1
 let g:ctrlp_match_func = {'match' : 'matcher#cmatch' }
+let g:ctrlp_map = '<leader>m'
 
 " Stuff for Vim Airline plugin
-let g:airline#extensions#tabline#enabled = 1
-let g:airline#extensions#syntastic#enabled = 1
+let g:airline#extensions#whitespace#enabled = 0
+let g:airline#extensions#tabline#enabled = 0
 let g:airline#extensions#tabline#show_tab_nr = 1
 let g:airline#extensions#tabline#buffer_nr_show = 1
+let g:airline#extensions#neomake#enabled = 1
 
 function! AirLineMattijs()
   function! Modified()
@@ -94,21 +100,25 @@ function! AirLineMattijs()
   let g:airline_section_z = airline#section#create(['branch'])
 endfunction
 
-" Use scss_lint for syntax checking
-let g:syntastic_scss_checkers = ['scss_lint']
-let g:syntastic_php_checkers = ['php']
-let g:syntastic_javascript_checkers = ['eslint']
-let g:syntastic_html_checkers=[]
+" Set syntax checkers
+let g:neomake_javascript_enabled_makers = ['eslint', 'flow']
+let g:neomake_jsx_enabled_makers = ['eslint', 'flow']
+let g:neomake_css_enabled_makers = ['stylelint']
 
- "Ignore unrecognized html tags
-let g:syntastic_html_tidy_ignore_errors = ['Unnecessary parent selector', 'proprietary attribute', 'missing </a>', 'trimming empty', 'is not recognized', 'discarding unexpected'  ]
-let g:syntastic_php_ignore_errors = ['Line indented incorrectly']
+" Also allow JSX syntax highlighting in .js files
+let g:jsx_ext_required = 0
+
+" Do not run vim-flow on save. Neomake still runs Flow on save.
+let g:flow#enable = 0
+
+" Close tags for filetypes
+let g:closetag_filenames = "*.html,*.jsx,*.tpl"
 
  "UtilSnips
-let g:UltiSnipsExpandTrigger="<tab>"
-let g:UltiSnipsJumpForwardTrigger="<c-j>"
-let g:UltiSnipsJumpBackwardTrigger="<c-k>"
-let g:UltiSnipsEditSplit="vertical"
+"let g:UltiSnipsExpandTrigger="<tab>"
+"let g:UltiSnipsJumpForwardTrigger="<c-j>"
+"let g:UltiSnipsJumpBackwardTrigger="<c-k>"
+"let g:UltiSnipsEditSplit="vertical"
 
 " }}}
 " Vim config options {{{
@@ -118,6 +128,9 @@ syntax on
 
 " Use bash for vim
 set shell=/bin/bash
+
+" Add Mollie dashboard to path
+set path+=/Users/mattijs/Sites/mollie/public/dashboard/src/
 
 " Launch in fullscreen mode
 "set fu
@@ -176,6 +189,11 @@ set noswapfile
 " Make Vim autoread changed files
 set autoread
 
+" Highlight the background of text that goes over the line limit
+highlight OverLength ctermbg=red ctermfg=white guibg=#592929
+match OverLength /\%101v.\+/
+autocmd BufNew,BufRead *.phtml,*.html,*.xml,*.md,*.sql match none
+
 " Count underscores as a word
 set iskeyword-=_
 
@@ -200,11 +218,9 @@ set fileformat=unix
 " Indentation settings
 set linebreak
 set tabstop=4
-set shiftwidth=4
-set autoindent
-set copyindent
-set preserveindent
-set smartindent
+"set noexpandtab shiftwidth=4 tabstop=4 smartindent
+"set copyindent
+"set preserveindent
 
 set laststatus=2
 set ttimeoutlen=50
@@ -235,12 +251,6 @@ set undolevels=1000
 " Don't beep
 set noerrorbells
 
-" Set the styles for the git diff SignColumn
-"highlight clear SignColumn
-"highlight SignColumn guibg=#333333
-"highlight GitGutterRemove guibg=#333333 guifg=#ff0000
-"highlight GitGutterAdd guibg=#333333 guifg=#BCD42A
-
 " }}}
 " Mappings {{{
 
@@ -269,6 +279,9 @@ noremap gk k
 " Map Yankring to ,p
 nnoremap <silent> <leader>p :YRShow<CR>
 
+" Lookup word under cursor in Dash
+nnoremap <silent> <leader>d :Dash<CR>
+
 " Move to next/prev quickfix buffer
 nnoremap <silent> <up> :cprev<CR>
 nnoremap <silent> <down> :cnext<CR>
@@ -276,9 +289,6 @@ nnoremap <silent> <down> :cnext<CR>
 " Move blocks of text around in visual mode
 vmap <down>  <Plug>SchleppDown
 vmap <up>    <Plug>SchleppUp
-
-" Open scratchpad.md
-noremap <leader>sp :split ~/OwnCloud/Documents/Scratchpad.md<CR>
 
 " Edit .vimrc with leader ev
 nnoremap <leader>ev <C-w><C-v><C-l>:e $MYVIMRC<cr>
@@ -298,11 +308,15 @@ nnoremap <leader>evh <C-w><C-v><C-l>:e /etc/apache2/extra/httpd-vhosts.conf<cr>
 " Edit hosts with leader eh
 nnoremap <leader>eh <C-w><C-v><C-l>:e /etc/hosts<cr>
 
+" Go to next item in loclist
+nnoremap <leader>e :lne<cr>
+
 " Save file with sudo
 cmap w!! w !sudo tee % >/dev/null
 
-" Look up in Dash documentation
-"nmap <silent> <leader>k <Plug>DashSearch
+" Reformat with Stylefmt
+nnoremap <silent> <leader>sf :Stylefmt<CR>
+vnoremap <silent> <leader>sf :StylefmtVisual<CR>
 
 " Split lines
 nnoremap S i<cr><esc>^mwgk:silent! s/\v +$//<cr>:noh<cr>`w
@@ -325,8 +339,11 @@ noremap L $
 " Get rid of search highlights with , space
 noremap <silent> <leader><space> :noh<CR>
 
-" Open new split window with , w and focus on it
-noremap <leader>w <C-w>v<C-w>l
+" Save current buffer
+noremap <leader>w :w!<cr>
+
+" Open new split window with <leader>s and focus on it
+noremap <leader>s <C-w>v<C-w>l
 
 " Map Ag search to ,f
 noremap <leader>f :Ag -Qi
@@ -340,9 +357,6 @@ noremap <leader>n :NERDTreeToggle<CR>
 
 " Leader key + c to go to current file in NERDTree
 noremap <leader>c :NERDTreeFind<CR>
-
-" Leader key + m for CtrlP
-noremap <silent> <leader>m :CtrlP<CR>
 
 " Leader key + j to open CtrlP in buffer mode
 noremap <silent> <leader>j :CtrlPBuffer<CR>
@@ -422,7 +436,13 @@ endfunction
 " Auto commands {{{
 
 " Set indentation for js files
-autocmd FileType javascript setlocal shiftwidth=2 tabstop=2 softtabstop=2 expandtab
+"autocmd FileType javascript setlocal shiftwidth=2 tabstop=2 softtabstop=2 expandtab
+
+" Enter opens tag
+augroup tag_navigation
+	autocmd!
+	autocmd BufRead,BufNewFile * if &l:modifiable | nnoremap <buffer> <CR> :exec("tag ".expand("<cword>"))<CR> | endif
+augroup END
 
 " Set different column width for git commits and phtml
 augroup textwidth
@@ -448,6 +468,12 @@ autocmd BufRead,BufNewFile *.scss set filetype=scss.css
 " Set json filetype
 au BufRead,BufNewFile *.json set filetype=json
 
+" Set flow filetype
+au BufRead,BufNewFile *.flow set filetype=javascript
+
 autocmd Vimenter * call AirLineMattijs()
+
+" Run Neomake when writing to file
+autocmd! BufWritePost * Neomake
 
 " }}}
