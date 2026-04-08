@@ -52,7 +52,7 @@ install_packages() {
     info "Checking dependencies..."
 
     local missing=()
-    for cmd in fish nvim git stow curl jq; do
+    for cmd in fish nvim git stow curl jq unzip; do
         if ! command -v "$cmd" &>/dev/null; then
             missing+=("$cmd")
         fi
@@ -122,9 +122,13 @@ install_packages() {
         if [[ "$PLATFORM" == "macos" ]]; then
             brew install fnm
         else
-            curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
+            curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell \
+                || warn "Could not install fnm"
         fi
     fi
+    # fnm installs to ~/.local/bin — ensure it's on PATH for this session
+    export PATH="$HOME/.local/bin:$PATH"
+
     # Ensure a Node.js version is installed (LTS)
     if command -v fnm &>/dev/null && [[ -z "$(fnm list 2>/dev/null | grep -v 'system')" ]]; then
         info "Installing Node.js LTS via fnm..."
