@@ -23,6 +23,30 @@ case "$OS" in
 esac
 info "Detected platform: $PLATFORM"
 
+# --- Install Neovim from GitHub releases (Linux) ---
+# The apt package is too old for LazyVim; grab the latest stable binary instead.
+install_neovim_linux() {
+    local arch
+    arch="$(uname -m)"
+    case "$arch" in
+        x86_64)  arch="x86_64" ;;
+        aarch64) arch="aarch64" ;;
+        *)       error "Unsupported architecture for Neovim: $arch"; return 1 ;;
+    esac
+
+    local tarball="nvim-linux-${arch}.tar.gz"
+    local url="https://github.com/neovim/neovim/releases/latest/download/${tarball}"
+    local install_dir="/opt/nvim-linux-${arch}"
+
+    info "Downloading Neovim (latest stable) for ${arch}..."
+    curl -fsSL -o "/tmp/${tarball}" "$url"
+    sudo rm -rf "$install_dir"
+    sudo tar -C /opt -xzf "/tmp/${tarball}"
+    sudo ln -sf "${install_dir}/bin/nvim" /usr/local/bin/nvim
+    rm -f "/tmp/${tarball}"
+    info "Neovim installed: $(nvim --version | head -1)"
+}
+
 # --- Install dependencies ---
 install_packages() {
     info "Checking dependencies..."
@@ -49,15 +73,21 @@ install_packages() {
         else
             info "Installing via apt..."
             sudo apt update
-            # Map command names to package names
+            # Map command names to package names (nvim handled separately)
             local pkgs=()
             for cmd in "${missing[@]}"; do
                 case "$cmd" in
-                    nvim) pkgs+=("neovim") ;;
+                    nvim) ;; # installed via install_neovim_linux below
                     *)    pkgs+=("$cmd") ;;
                 esac
             done
-            sudo apt install -y "${pkgs[@]}"
+            if [[ ${#pkgs[@]} -gt 0 ]]; then
+                sudo apt install -y "${pkgs[@]}"
+            fi
+            # Install Neovim from GitHub releases (apt version is too old for LazyVim)
+            if [[ " ${missing[*]} " == *" nvim "* ]]; then
+                install_neovim_linux
+            fi
         fi
     fi
 
@@ -120,7 +150,19 @@ install_packages() {
 # --- Back up existing configs ---
 backup_existing() {
     local needs_backup=false
-    for item in "$HOME/.config/fish" "$HOME/.config/nvim" "$HOME/.gitconfig" "$HOME/.gitignore_global" "$HOME/.gitconfig.macos" "$HOME/.gitconfig.linux" "$HOME/.claude"; do
+    local items=(
+        "$HOME/.bash_profile"
+        "$HOME/.bashrc"
+        "$HOME/.config/fish"
+        "$HOME/.config/nvim"
+        "$HOME/.gitconfig"
+        "$HOME/.gitignore_global"
+        "$HOME/.gitconfig.macos"
+        "$HOME/.gitconfig.linux"
+        "$HOME/.claude"
+    )
+
+    for item in "${items[@]}"; do
         if [[ -e "$item" && ! -L "$item" ]]; then
             needs_backup=true
             break
@@ -130,7 +172,7 @@ backup_existing() {
     if [[ "$needs_backup" == "true" ]]; then
         info "Backing up existing configs to $BACKUP_DIR"
         mkdir -p "$BACKUP_DIR"
-        for item in "$HOME/.config/fish" "$HOME/.config/nvim" "$HOME/.gitconfig" "$HOME/.gitignore_global" "$HOME/.gitconfig.macos" "$HOME/.gitconfig.linux" "$HOME/.claude"; do
+        for item in "${items[@]}"; do
             if [[ -e "$item" && ! -L "$item" ]]; then
                 cp -r "$item" "$BACKUP_DIR/" 2>/dev/null || true
                 info "  Backed up: $item"
