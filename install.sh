@@ -116,15 +116,33 @@ install_packages() {
         fi
     fi
 
+    # fnm (Fast Node Manager) — provides Node.js + npm
+    if ! command -v fnm &>/dev/null; then
+        info "Installing fnm..."
+        if [[ "$PLATFORM" == "macos" ]]; then
+            brew install fnm
+        else
+            curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
+        fi
+    fi
+    # Ensure a Node.js version is installed (LTS)
+    if command -v fnm &>/dev/null && [[ -z "$(fnm list 2>/dev/null | grep -v 'system')" ]]; then
+        info "Installing Node.js LTS via fnm..."
+        fnm install --lts
+    fi
+    # Make fnm's node/npm available in this bash session
+    if command -v fnm &>/dev/null; then
+        eval "$(fnm env)"
+    fi
+
     # diff-so-fancy
     if ! command -v diff-so-fancy &>/dev/null; then
         info "Installing diff-so-fancy..."
         if [[ "$PLATFORM" == "macos" ]]; then
             brew install diff-so-fancy
         else
-            # Install via npm if available, otherwise skip
             if command -v npm &>/dev/null; then
-                sudo npm install -g diff-so-fancy
+                npm install -g diff-so-fancy
             else
                 warn "diff-so-fancy not installed (npm not available)"
             fi
