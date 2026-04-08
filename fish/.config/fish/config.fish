@@ -31,18 +31,28 @@ set -gx EDITOR nvim
 export DOCKER_HOST_UID=(id -u)
 export DOCKER_HOST_GID=(id -g)
 
-# Fundle plugins
-fundle plugin tuvistavie/fish-ssh-agent
-fundle plugin edc/bass
+# Fundle plugins (bootstrap fundle if missing)
+if not functions -q fundle
+    if not test -f ~/.config/fish/functions/fundle.fish
+        echo "Bootstrapping fundle..."
+        curl -sfL https://git.io/fundle-install | fish 2>/dev/null
+    end
+end
 
-fundle init
+if functions -q fundle
+    fundle plugin tuvistavie/fish-ssh-agent
+    fundle plugin edc/bass
+    fundle init
+end
 
 # Load secrets (bash-compatible file, sourced via bass)
 # On Linux servers, .bash_profile already sources this before exec-ing fish,
 # so the vars are inherited. This covers macOS where fish is the login shell.
 if test -f ~/.secrets; and not set -q __secrets_loaded
-    bass source ~/.secrets
-    set -gx __secrets_loaded 1
+    if functions -q bass
+        bass source ~/.secrets
+        set -gx __secrets_loaded 1
+    end
 end
 
 # Starship prompt

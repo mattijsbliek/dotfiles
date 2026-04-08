@@ -84,10 +84,18 @@ install_packages() {
             if [[ ${#pkgs[@]} -gt 0 ]]; then
                 sudo apt install -y "${pkgs[@]}"
             fi
-            # Install Neovim from GitHub releases (apt version is too old for LazyVim)
-            if [[ " ${missing[*]} " == *" nvim "* ]]; then
-                install_neovim_linux
-            fi
+        fi
+    fi
+
+    # On Linux, ensure Neovim is recent enough for LazyVim (>= 0.10)
+    if [[ "$PLATFORM" == "linux" ]]; then
+        local nvim_version
+        nvim_version="$(nvim --version 2>/dev/null | head -1 | grep -oP 'v\K[0-9]+\.[0-9]+')" || true
+        if [[ -z "$nvim_version" ]] || [[ "$(printf '%s\n' "0.10" "$nvim_version" | sort -V | head -1)" != "0.10" ]]; then
+            warn "Neovim ${nvim_version:-missing} is too old for LazyVim (need >= 0.10)"
+            install_neovim_linux
+        else
+            info "Neovim v${nvim_version} is recent enough."
         fi
     fi
 
