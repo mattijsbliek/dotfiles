@@ -215,16 +215,25 @@ setup_secrets() {
 
 # --- Fish plugins ---
 setup_fish_plugins() {
-    if command -v fish &>/dev/null; then
-        info "Installing fish plugins via fundle..."
-        fish -c "
-            if functions -q fundle
-                fundle install
-            else
-                echo 'fundle not found — it will be bootstrapped on first shell start'
-            end
-        " 2>/dev/null || warn "Could not install fish plugins (will happen on first shell start)"
+    if ! command -v fish &>/dev/null; then
+        return
     fi
+
+    # Install fundle (fish plugin manager) if missing — download directly to
+    # avoid spawning a fish subprocess (which would source config.fish too early).
+    local fundle_path="$HOME/.config/fish/functions/fundle.fish"
+    if [[ ! -f "$fundle_path" ]]; then
+        info "Installing fundle..."
+        mkdir -p "$(dirname "$fundle_path")"
+        curl -sfL https://raw.githubusercontent.com/tuvistavie/fundle/master/functions/fundle.fish \
+            -o "$fundle_path" || {
+            warn "Could not download fundle; install manually"
+            return
+        }
+    fi
+
+    info "Installing fish plugins via fundle..."
+    fish -c "fundle install" 2>/dev/null || warn "Could not install fish plugins"
 }
 
 

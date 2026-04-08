@@ -31,14 +31,7 @@ set -gx EDITOR nvim
 export DOCKER_HOST_UID=(id -u)
 export DOCKER_HOST_GID=(id -g)
 
-# Fundle plugins (bootstrap fundle if missing)
-if not functions -q fundle
-    if not test -f ~/.config/fish/functions/fundle.fish
-        echo "Bootstrapping fundle..."
-        curl -sfL https://git.io/fundle-install | fish 2>/dev/null
-    end
-end
-
+# Fundle plugins (installed via install.sh)
 if functions -q fundle
     fundle plugin tuvistavie/fish-ssh-agent
     fundle plugin edc/bass
