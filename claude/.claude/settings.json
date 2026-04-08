@@ -1,0 +1,73 @@
+{
+  "env": {
+    "ENABLE_LSP_TOOL": "1",
+    "ENABLE_TOOL_SEARCH": "auto:5"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(sed:*)",
+      "Bash(source:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(touch:*)",
+      "Bash(ls:*)",
+      "Bash(sort:*)",
+      "Bash(tee:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(xargs:*)",
+      "Bash(bash:*)",
+      "Bash(sh:*)",
+      "Bash(chmod +x:*)",
+      "Bash(unzip:*)",
+      "Bash(java:*)",
+      "Bash(python3:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status:*)",
+      "Bash(git mv:*)",
+      "Bash(git stash:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(make:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(yarn:*)",
+      "Bash(docker:*)",
+      "Bash(test:*)",
+      "Skill(update-config)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "defaultMode": "plan"
+  },
+  "model": "opus[1m]",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/protect-secrets.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/dangerous-git-commands.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "outputStyle": "Explanatory",
+  "alwaysThinkingEnabled": true
+}

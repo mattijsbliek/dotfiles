@@ -1,0 +1,32 @@
+command_timeout = 1000
+
+[battery]
+disabled=true
+
+[erlang]
+symbol = "ⓔ "
+
+[nodejs]
+format = ''
+symbol = "[⬢](bold green) "
+
+[pulumi]
+symbol = "🧊 "
+
+[php]
+format = ''
+
+[docker_context]
+disabled=true
+
+[gcloud]
+disabled=true
+
+[git_status]
+disabled=true
+
+[package]
+disabled = true
+
+[helm]
+disabled = true
