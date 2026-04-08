@@ -116,14 +116,18 @@ install_packages() {
         fi
     fi
 
-    # fnm (Fast Node Manager) — provides Node.js + npm
+    # fnm (Fast Node Manager) — provides Node.js + npm (optional)
     if ! command -v fnm &>/dev/null; then
-        info "Installing fnm..."
-        if [[ "$PLATFORM" == "macos" ]]; then
-            brew install fnm
-        else
-            curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell \
-                || warn "Could not install fnm"
+        local install_fnm=""
+        read -rp "Install Node.js via fnm? [y/N] " install_fnm
+        if [[ "$install_fnm" =~ ^[Yy]$ ]]; then
+            info "Installing fnm..."
+            if [[ "$PLATFORM" == "macos" ]]; then
+                brew install fnm
+            else
+                curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell \
+                    || warn "Could not install fnm"
+            fi
         fi
     fi
     # fnm installs to ~/.local/bin — ensure it's on PATH for this session
