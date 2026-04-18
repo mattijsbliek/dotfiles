@@ -7,6 +7,7 @@
 [user]
 	name = Mattijs Bliek
 	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ6b6EVlKkmf6zBf6NkRc5pRr71YMFhc0a4qSUNiuLp0
+	email = mattijs@mattijsbliek.com
 [alias]
 	co = checkout
 	ci = commit

@@ -14,6 +14,9 @@ info() { echo -e "${GREEN}[INFO]${NC} $*"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
+# --- Stow packages (directories under $DOTFILES_DIR) ---
+PACKAGES=(bash fish nvim git claude starship ghostty)
+
 # --- Detect platform ---
 OS="$(uname -s)"
 case "$OS" in
@@ -181,39 +184,47 @@ install_packages() {
     fi
 }
 
-# --- Back up existing configs ---
-backup_existing() {
-    local needs_backup=false
-    local items=(
-        "$HOME/.bash_profile"
-        "$HOME/.bashrc"
-        "$HOME/.config/fish"
-        "$HOME/.config/nvim"
-        "$HOME/.gitconfig"
-        "$HOME/.gitignore_global"
-        "$HOME/.gitconfig.macos"
-        "$HOME/.gitconfig.linux"
-        "$HOME/.claude"
-    )
+# --- Back up files that would conflict with stow ---
+# GNU stow refuses to overwrite a target that is a regular file (not a
+# symlink) and aborts the ENTIRE package on the first conflict — even for
+# items that would otherwise link cleanly. Walk each package's source tree,
+# compute each file's target under $HOME, and if a regular file is sitting
+# there, move it into BACKUP_DIR preserving its relative path. Symlinks are
+# left alone; `stow --restow` replaces them.
+backup_conflicts() {
+    local moved_any=false
 
-    for item in "${items[@]}"; do
-        if [[ -e "$item" && ! -L "$item" ]]; then
-            needs_backup=true
-            break
-        fi
+    for pkg in "$@"; do
+        local pkg_dir="$DOTFILES_DIR/$pkg"
+        [[ -d "$pkg_dir" ]] || continue
+
+        while IFS= read -r -d '' file; do
+            local rel="${file#"$pkg_dir"/}"
+            local target="$HOME/$rel"
+
+            # -f is true for regular files (following symlinks); combined
+            # with `! -L` this catches both "real file shadowing a stow
+            # target" and "file reached via a symlinked ancestor". The
+            # realpath check filters the latter: if the target already
+            # resolves into $DOTFILES_DIR, the link is already in place and
+            # moving the file would *remove it from the repo*.
+            if [[ -f "$target" && ! -L "$target" ]]; then
+                if [[ "$(readlink -f -- "$target")" == "$(readlink -f -- "$file")" ]]; then
+                    continue
+                fi
+                if [[ "$moved_any" == "false" ]]; then
+                    info "Backing up conflicting files to $BACKUP_DIR"
+                    moved_any=true
+                fi
+                mkdir -p "$(dirname "$BACKUP_DIR/$rel")"
+                mv "$target" "$BACKUP_DIR/$rel"
+                info "  Moved aside: $target"
+            fi
+        done < <(find "$pkg_dir" -type f -print0)
     done
 
-    if [[ "$needs_backup" == "true" ]]; then
-        info "Backing up existing configs to $BACKUP_DIR"
-        mkdir -p "$BACKUP_DIR"
-        for item in "${items[@]}"; do
-            if [[ -e "$item" && ! -L "$item" ]]; then
-                cp -r "$item" "$BACKUP_DIR/" 2>/dev/null || true
-                info "  Backed up: $item"
-            fi
-        done
-    else
-        info "No existing configs to back up (all symlinks or absent)."
+    if [[ "$moved_any" == "false" ]]; then
+        info "No conflicting files to back up (all symlinks or absent)."
     fi
 }
 
@@ -221,7 +232,7 @@ backup_existing() {
 stow_packages() {
     info "Stowing dotfiles packages..."
     cd "$DOTFILES_DIR"
-    for pkg in bash fish nvim git claude starship ghostty; do
+    for pkg in "${PACKAGES[@]}"; do
         info "  Stowing: $pkg"
         stow -v --target="$HOME" --restow "$pkg" 2>&1 | grep -v "^$" || true
     done
@@ -271,7 +282,7 @@ main() {
 
     install_packages
     echo ""
-    backup_existing
+    backup_conflicts "${PACKAGES[@]}"
     echo ""
     stow_packages
     echo ""
