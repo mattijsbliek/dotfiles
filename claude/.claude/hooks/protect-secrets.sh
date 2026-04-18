@@ -10,6 +10,12 @@ INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_name',''))" 2>/dev/null)
 TOOL_INPUT=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('tool_input','')))" 2>/dev/null)
 
+# Patterns for files that look sensitive but are safe to access
+ALLOWED_PATTERNS=(
+  '\.env\.example$'
+  '\.env\.development$'
+)
+
 # Patterns for sensitive files
 SENSITIVE_PATTERNS=(
   # Environment files
@@ -59,6 +65,11 @@ SENSITIVE_PATTERNS=(
 # Function to check if a path matches any sensitive pattern
 is_sensitive() {
   local path="$1"
+  for pattern in "${ALLOWED_PATTERNS[@]}"; do
+    if echo "$path" | grep -qE "$pattern"; then
+      return 1
+    fi
+  done
   for pattern in "${SENSITIVE_PATTERNS[@]}"; do
     if echo "$path" | grep -qE "$pattern"; then
       return 0
