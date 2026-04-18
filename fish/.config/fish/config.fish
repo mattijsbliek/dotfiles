@@ -85,3 +85,8 @@ end
 if test -f ~/.config/fish/fundle/reitzig/sdkman-for-fish/conf.d/sdk.fish
     source ~/.config/fish/fundle/reitzig/sdkman-for-fish/conf.d/sdk.fish
 end
+
+# fnm (auto-switch Node version based on .nvmrc / .node-version)
+if command -q fnm
+    fnm env --use-on-cd --shell fish | source
+end

@@ -43,7 +43,7 @@
       "WebSearch"
     ],
     "deny": [],
-    "defaultMode": "plan"
+    "defaultMode": "auto"
   },
   "model": "opus[1m]",
   "hooks": {
@@ -68,6 +68,12 @@
       }
     ]
   },
+  "enabledPlugins": {
+    "sentry@claude-plugins-official": true,
+    "php-lsp@claude-plugins-official": true
+  },
   "outputStyle": "Explanatory",
-  "alwaysThinkingEnabled": true
+  "alwaysThinkingEnabled": true,
+  "skipDangerousModePermissionPrompt": true,
+  "skipAutoPermissionPrompt": true
 }

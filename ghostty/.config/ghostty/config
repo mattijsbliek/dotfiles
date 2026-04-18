@@ -54,6 +54,3 @@ font-family = BlexMono Nerd Font Mono
 cursor-style = block
 cursor-style-blink = false
 mouse-shift-capture = false
-macos-non-native-fullscreen = true
-fullscreen = true
-scroll-on-output = false
