@@ -4,6 +4,7 @@ set -gx PATH node_modules/.bin $PATH
 set -gx PATH $HOME/.bin $PATH
 set -gx PATH /usr/local/sbin $PATH
 set -gx PATH $HOME/.local/bin $PATH
+set -gx PATH ~/.local/share/fnm $PATH
 
 # Elixir/OTP
 set -gx PATH $HOME/.elixir-install/installs/otp/27.1.2/bin $PATH
