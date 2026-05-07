@@ -4,6 +4,8 @@
 	autocrlf = input
 	excludesfile = ~/.gitignore_global
 	pager = diff-so-fancy | less --tabs=4 -RFX
+	fsmonitor = true
+	untrackedCache = true
 [user]
 	name = Mattijs Bliek
 	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ6b6EVlKkmf6zBf6NkRc5pRr71YMFhc0a4qSUNiuLp0
@@ -25,6 +27,7 @@
 	autoSetupRemote = true
 [merge]
 	tool = vimdiff
+	conflictStyle = zdiff3
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
@@ -40,3 +43,44 @@
 	path = ~/.gitconfig.macos
 [includeIf "gitdir:/home/"]
 	path = ~/.gitconfig.linux
+[branch]
+	sort = committerdate
+[checkout]
+	workers = 0
+[commit]
+	verbose = true
+[diff]
+	algorithm = histogram
+	colorMoved = plain
+	renames = copies
+[feature]
+	manyFiles = false
+[fetch]
+	prune = true
+	pruneTags = true
+[help]
+	autocorrect = prompt
+[index]
+	version = 4
+[init]
+	defaultBranch = main
+[lfs]
+	locksverify = false
+	setlockablereadonly = false
+[log]
+	date = iso
+[pack]
+	useSparse = true
+[pull]
+	rebase = true
+[rebase]
+	autoStash = true
+	updateRefs = true
+[tag]
+	sort = refname
+[credential "https://gitlab.molops.io"]
+	helper = 
+	helper = !/usr/local/bin/mol gitlab git-credential-provider
+[credential "https://github.com"]
+	helper = 
+	helper = !gh auth git-credential

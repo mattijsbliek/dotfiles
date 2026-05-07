@@ -12,3 +12,5 @@ if [ -d "$FNM_PATH" ]; then
   export PATH="$FNM_PATH:$PATH"
   eval "$(fnm env --shell bash)"
 fi
+eval "$(/opt/homebrew/bin/brew shellenv)"
+[ -f ~/.molrc ] && source ~/.molrc

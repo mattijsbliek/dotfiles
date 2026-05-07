@@ -20,6 +20,7 @@ ALLOWED_PATTERNS=(
 SENSITIVE_PATTERNS=(
   # Environment files
   '\.env$'
+  '\.secrets'
   '\.env\.'
   '\.envrc'
   # SSH keys and config
@@ -84,7 +85,7 @@ if [[ "$TOOL_NAME" == "Read" ]]; then
   if is_sensitive "$FILE_PATH"; then
     echo "🔒 BLOCKED: Access to sensitive file denied: $FILE_PATH" >&2
     echo "This file may contain secrets or credentials. Access has been blocked by the protect-secrets hook." >&2
-    exit 2  # Exit code 2 = block the tool call
+    exit 2 # Exit code 2 = block the tool call
   fi
 fi
 

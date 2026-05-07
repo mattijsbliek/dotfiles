@@ -70,10 +70,13 @@
   },
   "enabledPlugins": {
     "sentry@claude-plugins-official": true,
-    "php-lsp@claude-plugins-official": true
+    "php-lsp@claude-plugins-official": true,
+    "mdp@mollie-claude-plugins": true,
+    "claude-md-management@claude-plugins-official": true
   },
   "outputStyle": "Explanatory",
   "alwaysThinkingEnabled": true,
   "skipDangerousModePermissionPrompt": true,
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "remoteControlAtStartup": false
 }
