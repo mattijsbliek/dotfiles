@@ -83,4 +83,7 @@
 	helper = !/usr/local/bin/mol gitlab git-credential-provider
 [credential "https://github.com"]
 	helper = 
-	helper = !gh auth git-credential
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
