@@ -82,5 +82,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 These guidelines are working if: fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
+## Documentation
+Always update relevant existing documentation (README.md, docs/) when making code changes that affect setup, configuration, commands, or architecture. Create new documentation files when adding a significant new feature or subsystem that isn't yet covered.
+
 ## PR/MR Descriptions
 Never add "Generated with Claude Code" or any similar AI attribution statements to PR/MR descriptions, commit messages, or any other user-facing content.
