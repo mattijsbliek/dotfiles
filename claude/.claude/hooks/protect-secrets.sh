@@ -14,6 +14,7 @@ TOOL_INPUT=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin)
 ALLOWED_PATTERNS=(
   '\.env\.example$'
   '\.env\.development$'
+  '\.env\..*\.example'   # e.g. .env.local.example, .env.staging.example
 )
 
 # Patterns for sensitive files
@@ -99,16 +100,26 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
   fi
 fi
 
-# Check Bash tool for cat/read commands targeting sensitive files
+# Check Bash tool for commands targeting sensitive files
 if [[ "$TOOL_NAME" == "Bash" ]]; then
   COMMAND=$(echo "$TOOL_INPUT" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('command',''))" 2>/dev/null)
   for pattern in "${SENSITIVE_PATTERNS[@]}"; do
     if echo "$COMMAND" | grep -qE "$pattern"; then
-      echo "🔒 BLOCKED: Bash command references a sensitive file path." >&2
-      echo "Command: $COMMAND" >&2
-      echo "Matched pattern: $pattern" >&2
-      echo "Access has been blocked by the protect-secrets hook." >&2
-      exit 2
+      # Allow if every sensitive match is covered by an allowed pattern
+      covered=false
+      for allowed_pattern in "${ALLOWED_PATTERNS[@]}"; do
+        if echo "$COMMAND" | grep -qE "$allowed_pattern"; then
+          covered=true
+          break
+        fi
+      done
+      if [[ "$covered" == "false" ]]; then
+        echo "🔒 BLOCKED: Bash command references a sensitive file path." >&2
+        echo "Command: $COMMAND" >&2
+        echo "Matched pattern: $pattern" >&2
+        echo "Access has been blocked by the protect-secrets hook." >&2
+        exit 2
+      fi
     fi
   done
 fi
