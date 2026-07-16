@@ -21,6 +21,7 @@ against the source below and copy over what you want.
 | obsidian-vault | mattpocock/skills | skills/personal/obsidian-vault/SKILL.md |
 | prototype | mattpocock/skills | skills/engineering/prototype/SKILL.md |
 | research | mattpocock/skills | skills/engineering/research/SKILL.md |
+| setup-matt-pocock-skills | mattpocock/skills | skills/engineering/setup-matt-pocock-skills/SKILL.md |
 | tdd | mattpocock/skills | skills/engineering/tdd/SKILL.md |
 | to-spec | mattpocock/skills | skills/engineering/to-spec/SKILL.md |
 | to-tickets | mattpocock/skills | skills/engineering/to-tickets/SKILL.md |
