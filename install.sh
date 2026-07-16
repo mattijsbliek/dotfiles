@@ -105,6 +105,12 @@ install_packages() {
     # Starship prompt
     if ! command -v starship &>/dev/null; then
         info "Installing Starship prompt..."
+        # The installer writes to /usr/local/bin by default, which doesn't
+        # exist on fresh Apple Silicon machines. Create it first so the
+        # installer doesn't bail.
+        if [[ ! -d /usr/local/bin ]]; then
+            sudo mkdir -p /usr/local/bin
+        fi
         curl -sS https://starship.rs/install.sh | sh -s -- -y
     fi
 
