@@ -26,6 +26,15 @@ starship/  → ~/.config/starship.toml      Prompt configuration
 ghostty/   → ~/.config/ghostty/           Terminal emulator config (macOS)
 ```
 
+## Claude Code Skills
+
+`claude/.claude/skills/` holds every skill, hand-written or vendored, all stowed
+straight into `~/.claude/skills/`. Skills originally installed via `npx skills`
+(https://skills.sh) are vendored here rather than left under `~/.agents/skills`,
+since that CLI deletes and recreates its managed directories on every update and
+can't coexist with a symlink into this repo. See `claude/.claude/skills/VENDORED.md`
+for each vendored skill's upstream source, to pull updates manually.
+
 ## Machine-Specific Config
 
 Files that vary per machine are git-ignored and must be created locally:
