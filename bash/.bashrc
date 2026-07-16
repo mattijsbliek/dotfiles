@@ -1,6 +1,8 @@
 # Non-interactive sessions: stop here
 [[ $- != *i* ]] && return
 
+export CLAUDE_CODE_DISABLE_MOUSE_CLICKS=1
+
 # Interactive sessions: switch to fish
 if command -v fish &>/dev/null; then
     exec fish
