@@ -68,13 +68,6 @@
       }
     ]
   },
-  "enabledPlugins": {
-    "sentry@claude-plugins-official": true,
-    "php-lsp@claude-plugins-official": true,
-    "mdp@mollie-claude-plugins": true,
-    "claude-md-management@claude-plugins-official": true,
-    "jira-tools@mollie-claude-plugins": true
-  },
   "outputStyle": "Explanatory",
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",

@@ -42,9 +42,22 @@ Files that vary per machine are git-ignored and must be created locally:
 | File | Purpose |
 |------|---------|
 | `~/.secrets` | API tokens in bash syntax, sourced by both shells (see `secrets.example`) |
-| `~/.claude/settings.local.json` | Work-specific Claude settings (API keys, plugins) |
+| `~/.claude/settings.json` | Plugin toggles (`enabledPlugins`) and any other per-machine overrides. Not stowed — see below. |
+| `~/.claude/settings.local.json` | Work-specific Claude settings (API keys, env vars, hooks). Note: `enabledPlugins` is **not** read from this file by Claude Code — plugin state must live in `settings.json` |
 | `~/.claude/CLAUDE.local.md` | Work-specific Claude instructions (role, branching) |
 | `~/.gitconfig.local` | Machine-specific git settings (e.g., email) |
+
+### Why `settings.json` isn't stowed
+
+Claude Code only reads `enabledPlugins` from `~/.claude/settings.json` — a
+symlinked, shared `settings.json` means every plugin toggle syncs to every
+machine, and `settings.local.json` is not consulted for that key at all
+(confirmed by testing; it's still fine for env vars, hooks, statusLine, etc.).
+So `claude/.stow-local-ignore` excludes `settings.json` from stowing, and each
+machine keeps its own real (non-symlinked) copy. `claude/.claude/settings.json`
+in this repo is the shared baseline (permissions, hooks, model, output style —
+no `enabledPlugins`); copy it to `~/.claude/settings.json` on a new machine and
+add whichever plugins that machine needs.
 
 ## Platform Handling
 

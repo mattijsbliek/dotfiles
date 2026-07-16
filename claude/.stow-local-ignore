@@ -1,0 +1,23 @@
+# Comments and blank lines are allowed.
+# This package defines a custom ignore list, which replaces stow's
+# built-in defaults entirely -- so we repeat those here and add our own.
+RCS
+.+,v
+CVS
+\.\#.+ # CVS conflict files / emacs lock files
+\.cvsignore
+\.svn
+_darcs
+\.hg
+\.git
+\.gitignore
+\.gitmodules
+.+~ # emacs backup files
+\#.*\# # emacs autosave files
+^/README.*
+^/LICENSE.*
+^/COPYING
+
+# settings.json varies per machine (API keys, plugins) and is no longer
+# synced -- see README.md. Keep it a plain local file, not a symlink.
+^/\.claude/settings\.json$
