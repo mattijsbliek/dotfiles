@@ -39,31 +39,19 @@ done
 
 # Require explicit user approval for any push that lands on main/master,
 # even when not a force-push (auto permission mode won't otherwise prompt for it).
+# Ask git what it will ACTUALLY do (via --dry-run --porcelain) instead of guessing
+# from the command text: a branch's upstream tracking can silently redirect an
+# explicit `git push origin <branch>` onto a completely different remote ref.
 if echo "$COMMAND" | grep -qE '\bgit[[:space:]]+push\b'; then
   CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
-  PUSH_SEGMENT=$(echo "$COMMAND" | sed -E 's/.*(git[[:space:]]+push)/\1/')
+  PUSH_SEGMENT=$(echo "$COMMAND" | sed -E 's/.*(git[[:space:]]+push)/\1/; s/(&&|;|\|).*$//')
+  DRYRUN_SEGMENT=$(echo "$PUSH_SEGMENT" | sed -E 's/^(git[[:space:]]+push)/\1 --dry-run --porcelain/')
 
-  read -ra TOKENS <<< "$PUSH_SEGMENT"
-  REMOTE=""
-  REFSPEC=""
-  for ((i = 2; i < ${#TOKENS[@]}; i++)); do
-    tok="${TOKENS[$i]}"
-    [[ "$tok" == -* ]] && continue
-    if [[ -z "$REMOTE" ]]; then
-      REMOTE="$tok"
-      continue
-    fi
-    REFSPEC="$tok"
-    break
-  done
+  PORCELAIN=$(cd "$CWD" 2>/dev/null && eval "$DRYRUN_SEGMENT" 2>/dev/null)
+  DESTS=$(echo "$PORCELAIN" | awk -F'\t' '$2 { split($2, a, ":"); print a[2] }' | sed -E 's#^refs/heads/##')
 
-  if [[ -n "$REFSPEC" ]]; then
-    DEST="${REFSPEC#*:}"
-  else
-    DEST=$(git -C "$CWD" rev-parse --abbrev-ref HEAD 2>/dev/null)
-  fi
-
-  if [[ "$DEST" == "main" || "$DEST" == "master" ]]; then
+  if echo "$DESTS" | grep -qxE 'main|master'; then
+    DEST=$(echo "$DESTS" | grep -xE 'main|master' | head -1)
     REASON="Direct push to $DEST detected: '$COMMAND'. Confirm with the user before this push runs."
     jq -n --arg reason "$REASON" \
       '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: $reason}}'
