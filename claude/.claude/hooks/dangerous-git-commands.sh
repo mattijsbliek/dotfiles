@@ -37,4 +37,38 @@ for pattern in "${DANGEROUS_PATTERNS[@]}"; do
   fi
 done
 
+# Require explicit user approval for any push that lands on main/master,
+# even when not a force-push (auto permission mode won't otherwise prompt for it).
+if echo "$COMMAND" | grep -qE '\bgit[[:space:]]+push\b'; then
+  CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+  PUSH_SEGMENT=$(echo "$COMMAND" | sed -E 's/.*(git[[:space:]]+push)/\1/')
+
+  read -ra TOKENS <<< "$PUSH_SEGMENT"
+  REMOTE=""
+  REFSPEC=""
+  for ((i = 2; i < ${#TOKENS[@]}; i++)); do
+    tok="${TOKENS[$i]}"
+    [[ "$tok" == -* ]] && continue
+    if [[ -z "$REMOTE" ]]; then
+      REMOTE="$tok"
+      continue
+    fi
+    REFSPEC="$tok"
+    break
+  done
+
+  if [[ -n "$REFSPEC" ]]; then
+    DEST="${REFSPEC#*:}"
+  else
+    DEST=$(git -C "$CWD" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  fi
+
+  if [[ "$DEST" == "main" || "$DEST" == "master" ]]; then
+    REASON="Direct push to $DEST detected: '$COMMAND'. Confirm with the user before this push runs."
+    jq -n --arg reason "$REASON" \
+      '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: $reason}}'
+    exit 0
+  fi
+fi
+
 exit 0
