@@ -20,7 +20,7 @@ Check the remote URL (`git remote get-url origin`) to determine the hosting plat
 - **GitHub** (`github.com`): use `gh`
 
 ## Model Selection
-Default to Opus if you're unsure
+Default to Sonnet if you're unsure
 
 - **Sonnet** — everyday tasks, code generation, quick fixes
 - **Opus** — complex architecture, multi-file refactors, planning
