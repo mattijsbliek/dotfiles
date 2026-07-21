@@ -15,6 +15,7 @@ against the source below and copy over what you want.
 | edit-article | mattpocock/skills | skills/personal/edit-article/SKILL.md |
 | find-skills | vercel-labs/skills | skills/find-skills/SKILL.md |
 | grill-with-docs | mattpocock/skills | skills/engineering/grill-with-docs/SKILL.md |
+| grilling | mattpocock/skills | skills/productivity/grilling/SKILL.md |
 | handoff | mattpocock/skills | skills/productivity/handoff/SKILL.md |
 | implement | mattpocock/skills | skills/engineering/implement/SKILL.md |
 | improve-codebase-architecture | mattpocock/skills | skills/engineering/improve-codebase-architecture/SKILL.md |
