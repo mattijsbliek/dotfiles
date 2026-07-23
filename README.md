@@ -14,7 +14,7 @@ The bootstrap script installs dependencies (fish, neovim, stow, starship, etc.),
 
 ## Structure
 
-Seven stow packages, each mirroring the target directory structure under `$HOME`:
+Eight stow packages, each mirroring the target directory structure under `$HOME`:
 
 ```
 bash/      → ~/.bash_profile, ~/.bashrc   Sources secrets, execs fish for interactive sessions
@@ -24,6 +24,7 @@ git/       → ~/.gitconfig, etc.           Git aliases, diff-so-fancy, SSH sign
 claude/    → ~/.claude/                   Claude Code settings, hooks, skills
 starship/  → ~/.config/starship.toml      Prompt configuration
 ghostty/   → ~/.config/ghostty/           Terminal emulator config (macOS)
+tmux/      → ~/.tmux.conf                 Status bar, mouse mode
 ```
 
 ## Claude Code Skills

@@ -15,7 +15,7 @@ warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
 # --- Stow packages (directories under $DOTFILES_DIR) ---
-PACKAGES=(bash fish nvim git claude starship ghostty)
+PACKAGES=(bash fish nvim git claude starship ghostty tmux)
 
 # --- Detect platform ---
 OS="$(uname -s)"
