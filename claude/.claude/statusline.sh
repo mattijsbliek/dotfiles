@@ -26,6 +26,11 @@ GIT_COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
 if [ -n "$GIT_COMMON_DIR" ] && [ "$GIT_DIR" != "$GIT_COMMON_DIR" ]; then
   TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null)
   WORKTREE="${TOPLEVEL##*/}"
+  MAIN_DIR="${GIT_COMMON_DIR%/.git}"
+  if [ "$WORKTREE" = "${MAIN_DIR##*/}" ]; then
+    PARENT="${TOPLEVEL%/*}"
+    WORKTREE="${PARENT##*/}"
+  fi
 fi
 
 TOKENS=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
