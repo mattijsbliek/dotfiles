@@ -1,6 +1,6 @@
 #!/bin/bash
-# Claude Code status line: repo | branch | context tokens used | model.
-# e.g. "Clientroom | 🌿 (main) | 20k (10%) | 🤖 Opus 4.6"
+# Claude Code status line: repo | branch | worktree (if in one) | context tokens used | model.
+# e.g. "Clientroom | 🌿 (mattijs/JIRA-1-fix) | 🌳 mattijs/JIRA-1-fix | 20k (10%) | 🤖 Opus 4.6"
 # Token color: grey under 100k tokens, yellow 100k-200k, red above 200k.
 
 input=$(cat)
@@ -20,6 +20,13 @@ if [ -z "$REPO" ]; then
 fi
 
 BRANCH=$(git branch --show-current 2>/dev/null)
+
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+GIT_COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
+if [ -n "$GIT_COMMON_DIR" ] && [ "$GIT_DIR" != "$GIT_COMMON_DIR" ]; then
+  TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null)
+  WORKTREE="${TOPLEVEL##*/}"
+fi
 
 TOKENS=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
 PCT=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
@@ -42,6 +49,7 @@ MODEL=$(echo "$input" | jq -r '.model.display_name // empty')
 
 OUTPUT="${CYAN}${REPO}${RESET}"
 [ -n "$BRANCH" ] && OUTPUT="${OUTPUT} | ${GREEN}🌿 (${BRANCH})${RESET}"
+[ -n "$WORKTREE" ] && OUTPUT="${OUTPUT} | ${GREEN}🌳 ${WORKTREE}${RESET}"
 OUTPUT="${OUTPUT} | ${TOKEN_COLOR}${TOKEN_DISPLAY} (${PCT}%)${RESET}"
 [ -n "$MODEL" ] && OUTPUT="${OUTPUT} | ${MAGENTA}🤖 ${MODEL}${RESET}"
 

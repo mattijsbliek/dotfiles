@@ -38,10 +38,11 @@ for each vendored skill's upstream source, to pull updates manually.
 
 ## Claude Code Status Line
 
-`claude/.claude/statusline.sh` shows repo, branch, context tokens used, and
-model, e.g. `Clientroom | 🌿 (main) | 20k (10%) | 🤖 Opus 4.6`. Token count is
-colored grey under 100k tokens, yellow from 100k-200k, red above 200k. Wired
-up via the `statusLine` key in `claude/.claude/settings.json`.
+`claude/.claude/statusline.sh` shows repo, branch, worktree (when in a linked
+git worktree), context tokens used, and model, e.g.
+`Clientroom | 🌿 (main) | 20k (10%) | 🤖 Opus 4.6`. Token count is colored grey
+under 100k tokens, yellow from 100k-200k, red above 200k. Wired up via the
+`statusLine` key in `claude/.claude/settings.json`.
 
 ## Machine-Specific Config
 
