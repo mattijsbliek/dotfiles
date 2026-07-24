@@ -94,3 +94,9 @@ end
 if command -q fnm
     fnm env --use-on-cd --shell fish | source
 end
+
+# Worktrunk (git worktree manager) — enables `wt switch` to cd the shell.
+# Guarded so a machine without wt installed yet doesn't error on startup.
+if command -q wt
+    wt config shell init fish | source
+end

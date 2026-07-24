@@ -10,11 +10,11 @@ cd ~/dotfiles
 ./install.sh
 ```
 
-The bootstrap script installs dependencies (fish, neovim, stow, starship, etc.), backs up existing configs, and creates symlinks via stow.
+The bootstrap script installs dependencies (fish, neovim, stow, starship, the `gh`/`glab` CLIs, tmux, worktrunk, etc.), backs up existing configs, and creates symlinks via stow.
 
 ## Structure
 
-Eight stow packages, each mirroring the target directory structure under `$HOME`:
+Nine stow packages, each mirroring the target directory structure under `$HOME`:
 
 ```
 bash/      → ~/.bash_profile, ~/.bashrc   Sources secrets, execs fish for interactive sessions
@@ -25,6 +25,7 @@ claude/    → ~/.claude/                   Claude Code settings, hooks, skills
 starship/  → ~/.config/starship.toml      Prompt configuration
 ghostty/   → ~/.config/ghostty/           Terminal emulator config (macOS)
 tmux/      → ~/.tmux.conf                 Status bar, mouse mode
+worktrunk/ → ~/.config/worktrunk/         wt aliases + tmux window-rename hooks
 ```
 
 ## Claude Code Skills
@@ -74,6 +75,7 @@ macOS vs Linux differences are handled automatically:
 
 - **Fish**: `conf.d/platform.fish` detects the OS for Homebrew paths and 1Password SSH agent socket
 - **Git**: `includeIf` loads `.gitconfig.macos` or `.gitconfig.linux` for the 1Password signing program path
+- **Worktrunk**: `config.fish` runs `wt config shell init fish | source` only behind a `command -q wt` guard, so a freshly cloned machine doesn't error before the tool is installed. `install.sh` installs `wt` (plus `gh`/`glab`/`tmux`) cross-platform: Homebrew on macOS; on Linux, `gh` via its official apt repo, `glab` via the official `.deb` release, and `worktrunk` via `cargo install`. CLI auth (`gh auth login`, `glab auth login`) stays manual — the `issue` alias picks `gh` vs `glab` per repo from `remote_url`, not per machine.
 
 ## Secrets via 1Password
 

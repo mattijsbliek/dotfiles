@@ -15,7 +15,7 @@ warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
 # --- Stow packages (directories under $DOTFILES_DIR) ---
-PACKAGES=(bash fish nvim git claude starship ghostty tmux)
+PACKAGES=(bash fish nvim git claude starship ghostty tmux worktrunk)
 
 # --- Detect platform ---
 OS="$(uname -s)"
@@ -178,6 +178,78 @@ install_packages() {
             echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/$(dpkg --print-architecture) stable main" | \
                 sudo tee /etc/apt/sources.list.d/1password.list
             sudo apt update && sudo apt install -y 1password-cli
+        fi
+    fi
+
+    # tmux — terminal multiplexer (Worktrunk renames the active window per branch)
+    if ! command -v tmux &>/dev/null; then
+        info "Installing tmux..."
+        if [[ "$PLATFORM" == "macos" ]]; then
+            brew install tmux
+        else
+            sudo apt install -y tmux || warn "Could not install tmux"
+        fi
+    fi
+
+    # GitHub CLI (gh) — used by the Worktrunk `issue` alias on GitHub repos
+    if ! command -v gh &>/dev/null; then
+        info "Installing GitHub CLI (gh)..."
+        if [[ "$PLATFORM" == "macos" ]]; then
+            brew install gh
+        else
+            # Official GitHub CLI apt repository
+            sudo mkdir -p -m 755 /etc/apt/keyrings
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+                sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
+            sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | \
+                sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+            sudo apt update && sudo apt install -y gh || warn "Could not install gh"
+        fi
+    fi
+
+    # GitLab CLI (glab) — used by the Worktrunk `issue` alias on GitLab repos
+    if ! command -v glab &>/dev/null; then
+        info "Installing GitLab CLI (glab)..."
+        if [[ "$PLATFORM" == "macos" ]]; then
+            brew install glab
+        else
+            # No official apt repo exists; fetch the official .deb from GitLab
+            # releases (same pattern as install_neovim_linux above). jq is a
+            # core dependency, installed earlier in this function.
+            local glab_arch glab_ver glab_deb
+            glab_arch="$(dpkg --print-architecture)" # amd64 / arm64
+            glab_ver="$(curl -fsSL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases" \
+                | jq -r '.[0].tag_name' | sed 's/^v//')" || true
+            if [[ -n "${glab_ver:-}" ]]; then
+                glab_deb="glab_${glab_ver}_linux_${glab_arch}.deb"
+                if curl -fsSL -o "/tmp/${glab_deb}" \
+                    "https://gitlab.com/gitlab-org/cli/-/releases/v${glab_ver}/downloads/${glab_deb}"; then
+                    sudo dpkg -i "/tmp/${glab_deb}" || warn "Could not install glab (.deb)"
+                    rm -f "/tmp/${glab_deb}"
+                else
+                    warn "Could not download glab .deb; install manually: https://gitlab.com/gitlab-org/cli"
+                fi
+            else
+                warn "Could not determine latest glab version; install manually: https://gitlab.com/gitlab-org/cli"
+            fi
+        fi
+    fi
+
+    # Worktrunk (wt) — git worktree manager
+    if ! command -v wt &>/dev/null; then
+        info "Installing Worktrunk (wt)..."
+        if [[ "$PLATFORM" == "macos" ]]; then
+            brew install worktrunk
+        else
+            # Not packaged for apt; build via cargo. If the tree-sitter C build
+            # fails, retry without syntax highlighting:
+            #   cargo install worktrunk --no-default-features --features cli
+            if command -v cargo &>/dev/null; then
+                cargo install worktrunk || warn "Could not install worktrunk via cargo"
+            else
+                warn "worktrunk not installed (cargo not available). Install Rust, or see https://worktrunk.dev"
+            fi
         fi
     fi
 

@@ -1,0 +1,20 @@
+[post-start]
+tmux-rename = "tmux rename-window '{{ branch }}' 2>/dev/null || true"
+
+[post-switch]
+tmux-rename = "tmux rename-window '{{ branch }}' 2>/dev/null || true"
+
+[aliases]
+issue = '''
+url="{{ remote_url }}"
+num="{{ args[0] }}"
+
+if echo "$url" | grep -qi gitlab; then
+  title=$(glab issue view "$num" -F json | jq -r .title)
+else
+  title=$(gh issue view "$num" --json title -q .title)
+fi
+
+slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]' '-' | sed 's/-*$//')
+wt switch --create "issue-${num}-${slug}"
+'''
