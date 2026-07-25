@@ -28,6 +28,26 @@ tmux/      → ~/.tmux.conf                 Status bar, mouse mode
 worktrunk/ → ~/.config/worktrunk/         wt aliases + tmux window-rename hooks
 ```
 
+## Worktree Workflow
+
+The `mb` fish function (`fish/.config/fish/functions/mb.fish`) wraps worktrunk +
+tmux + Claude Code into two verbs:
+
+```
+mb start my-feature              # wt switch --create -x claude:
+                                 #   creates worktree + branch, cds in,
+                                 #   renames the tmux window, launches claude
+mb start my-feature -- "prompt"  # same, but starts claude with an initial prompt
+mb complete                      # wt remove (branch deleted if merged), then
+                                 #   kills the tmux window. Refuses a dirty tree.
+mb complete --force              # remove even with uncommitted changes
+mb complete --reap               # also kill leftover dev servers in the worktree
+```
+
+`mb complete` runs `wt remove` first and only kills the window if it succeeds, so
+uncommitted work can't be silently destroyed. The tmux window-rename comes from
+the worktrunk `post-start`/`post-switch` hooks in `worktrunk/`.
+
 ## Claude Code Skills
 
 `claude/.claude/skills/` holds every skill, hand-written or vendored, all stowed
