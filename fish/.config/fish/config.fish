@@ -28,9 +28,6 @@ set -x LANG en_US.UTF-8
 # Editor
 set -gx EDITOR nvim
 
-# Claude Code
-set -gx CLAUDE_CODE_DISABLE_MOUSE_CLICKS 1
-
 # Docker host IDs
 export DOCKER_HOST_UID=(id -u)
 export DOCKER_HOST_GID=(id -g)
