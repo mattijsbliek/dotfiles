@@ -271,10 +271,11 @@ install_packages() {
 # --- Back up files that would conflict with stow ---
 # GNU stow refuses to overwrite a target that is a regular file (not a
 # symlink) and aborts the ENTIRE package on the first conflict — even for
-# items that would otherwise link cleanly. Walk each package's source tree,
-# compute each file's target under $HOME, and if a regular file is sitting
-# there, move it into BACKUP_DIR preserving its relative path. Symlinks are
-# left alone; `stow --restow` replaces them.
+# items that would otherwise link cleanly. Ask stow itself (dry run) which
+# targets actually conflict, rather than walking the package tree by hand:
+# a hand-rolled walk doesn't know about `.stow-local-ignore` and will "back
+# up" (i.e. delete) files like claude/.claude/settings.json that are
+# intentionally excluded from stowing and never get restored.
 backup_conflicts() {
     local moved_any=false
 
@@ -282,29 +283,19 @@ backup_conflicts() {
         local pkg_dir="$DOTFILES_DIR/$pkg"
         [[ -d "$pkg_dir" ]] || continue
 
-        while IFS= read -r -d '' file; do
-            local rel="${file#"$pkg_dir"/}"
+        while IFS= read -r rel; do
             local target="$HOME/$rel"
+            [[ -f "$target" && ! -L "$target" ]] || continue
 
-            # -f is true for regular files (following symlinks); combined
-            # with `! -L` this catches both "real file shadowing a stow
-            # target" and "file reached via a symlinked ancestor". The
-            # realpath check filters the latter: if the target already
-            # resolves into $DOTFILES_DIR, the link is already in place and
-            # moving the file would *remove it from the repo*.
-            if [[ -f "$target" && ! -L "$target" ]]; then
-                if [[ "$(readlink -f -- "$target")" == "$(readlink -f -- "$file")" ]]; then
-                    continue
-                fi
-                if [[ "$moved_any" == "false" ]]; then
-                    info "Backing up conflicting files to $BACKUP_DIR"
-                    moved_any=true
-                fi
-                mkdir -p "$(dirname "$BACKUP_DIR/$rel")"
-                mv "$target" "$BACKUP_DIR/$rel"
-                info "  Moved aside: $target"
+            if [[ "$moved_any" == "false" ]]; then
+                info "Backing up conflicting files to $BACKUP_DIR"
+                moved_any=true
             fi
-        done < <(find "$pkg_dir" -type f -print0)
+            mkdir -p "$(dirname "$BACKUP_DIR/$rel")"
+            mv "$target" "$BACKUP_DIR/$rel"
+            info "  Moved aside: $target"
+        done < <(cd "$DOTFILES_DIR" && stow -n -v --target="$HOME" --restow "$pkg" 2>&1 \
+            | grep -oP '(?<=existing target is neither a link nor a directory: ).+' || true)
     done
 
     if [[ "$moved_any" == "false" ]]; then
