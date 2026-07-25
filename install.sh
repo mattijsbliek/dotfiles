@@ -242,13 +242,19 @@ install_packages() {
         if [[ "$PLATFORM" == "macos" ]]; then
             brew install worktrunk
         else
-            # Not packaged for apt; build via cargo. If the tree-sitter C build
-            # fails, retry without syntax highlighting:
-            #   cargo install worktrunk --no-default-features --features cli
-            if command -v cargo &>/dev/null; then
-                cargo install worktrunk || warn "Could not install worktrunk via cargo"
+            # Not packaged for apt. Use the official installer script, which
+            # fetches a prebuilt musl binary from GitHub releases — no cargo/
+            # Rust toolchain required. Installed straight into ~/.local/bin
+            # (already on PATH via fish config), so we skip its PATH/rc-file
+            # management entirely.
+            mkdir -p "$HOME/.local/bin"
+            if WORKTRUNK_UNMANAGED_INSTALL="$HOME/.local/bin" WORKTRUNK_NO_MODIFY_PATH=1 \
+                sh -c "$(curl -fsSL https://github.com/max-sixty/worktrunk/releases/latest/download/worktrunk-installer.sh)"; then
+                :
             else
-                warn "worktrunk not installed (cargo not available). Install Rust, or see https://worktrunk.dev"
+                warn "Could not install worktrunk automatically. Install manually:"
+                warn "  curl -fsSL https://github.com/max-sixty/worktrunk/releases/latest/download/worktrunk-installer.sh | sh"
+                warn "  (or see https://worktrunk.dev for other options)"
             fi
         fi
     fi
