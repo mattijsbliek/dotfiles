@@ -30,23 +30,29 @@ worktrunk/ → ~/.config/worktrunk/         wt aliases + tmux window-rename hook
 
 ## Worktree Workflow
 
-The `mb` fish function (`fish/.config/fish/functions/mb.fish`) wraps worktrunk +
-tmux + Claude Code into two verbs:
+The `m` fish function (`fish/.config/fish/functions/m.fish`) wraps worktrunk +
+tmux + Claude Code into three verbs:
 
 ```
-mb start my-feature              # wt switch --create -x claude:
-                                 #   creates worktree + branch, cds in,
-                                 #   renames the tmux window, launches claude
-mb start my-feature -- "prompt"  # same, but starts claude with an initial prompt
-mb complete                      # wt remove (branch deleted if merged), then
-                                 #   kills the tmux window. Refuses a dirty tree.
-mb complete --force              # remove even with uncommitted changes
-mb complete --reap               # also kill leftover dev servers in the worktree
+m start my-feature             # wt switch --create -x claude:
+                                #   creates worktree + branch, cds in,
+                                #   renames the tmux window, launches claude
+m start my-feature -- "prompt" # same, but starts claude with an initial prompt
+m cleanup                      # wt remove (branch deleted if merged), then
+                                #   kills the tmux window. Refuses a dirty tree.
+m cleanup --force              # remove even with uncommitted changes
+m cleanup --reap               # also kill leftover dev servers in the worktree
+m prune                        # wt step prune: bulk-remove worktrees/branches
+                                #   already merged into the default branch
+m prune --dry-run              # preview what prune would remove
 ```
 
-`mb complete` runs `wt remove` first and only kills the window if it succeeds, so
+`m cleanup` runs `wt remove` first and only kills the window if it succeeds, so
 uncommitted work can't be silently destroyed. The tmux window-rename comes from
-the worktrunk `post-start`/`post-switch` hooks in `worktrunk/`.
+the worktrunk `post-start`/`post-switch` hooks in `worktrunk/`. `m prune` skips
+the main worktree, locked worktrees, and anything younger than a day; it's for
+tidying up worktrees left behind after a manual merge or a forgotten `m
+cleanup` — it doesn't kill tmux windows for the worktrees it removes.
 
 ## Claude Code Skills
 
