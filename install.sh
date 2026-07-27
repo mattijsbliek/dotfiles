@@ -125,6 +125,12 @@ install_packages() {
         fi
     fi
 
+    # pngpaste — clipboard image access for `m paste-image` (macOS only)
+    if [[ "$PLATFORM" == "macos" ]] && ! command -v pngpaste &>/dev/null; then
+        info "Installing pngpaste..."
+        brew install pngpaste
+    fi
+
     # fnm (Fast Node Manager) — provides Node.js + npm (optional)
     if ! command -v fnm &>/dev/null; then
         local install_fnm=""

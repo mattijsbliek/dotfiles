@@ -54,6 +54,15 @@ the main worktree, locked worktrees, and anything younger than a day; it's for
 tidying up worktrees left behind after a manual merge or a forgotten `m
 cleanup` — it doesn't kill tmux windows for the worktrees it removes.
 
+`m` also has a `paste-image` verb, unrelated to worktrees: it grabs the
+clipboard image (via `pngpaste`, macOS only), scps it to `hl-claude:/tmp/`,
+copies the remote path back onto the clipboard (via `pbcopy`), and prints it.
+
+```
+m paste-image                  # paste clipboard image, scp to hl-claude:/tmp,
+                                #   copy + print the remote path
+```
+
 ## Claude Code Skills
 
 `claude/.claude/skills/` holds every skill, hand-written or vendored, all stowed

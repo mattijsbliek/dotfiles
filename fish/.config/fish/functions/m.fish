@@ -1,4 +1,4 @@
-function m --description "Worktree workflow helper (worktrunk + tmux + claude)"
+function m --description "Worktree workflow helper (worktrunk + tmux + claude) and misc utilities"
     switch $argv[1]
         case start
             # m start my-feature            → new worktree + branch, cd, rename window, launch claude
@@ -21,10 +21,32 @@ function m --description "Worktree workflow helper (worktrunk + tmux + claude)"
             # the removed worktrees — only `m cleanup` does that.
             #   m prune --dry-run   preview without removing anything
             wt step prune $argv[2..-1]
+        case paste-image
+            # Paste the clipboard image, scp it to hl-claude:/tmp, print the remote path.
+            set -l tmp (mktemp /tmp/paste-image-XXXXXX)
+            set -l local_path $tmp.png
+            mv $tmp $local_path
+
+            if not pngpaste $local_path
+                rm -f $local_path
+                echo "m paste-image: no image on clipboard" >&2
+                return 1
+            end
+
+            set -l remote_path /tmp/(basename $local_path)
+            if not scp -q $local_path hl-claude:$remote_path
+                rm -f $local_path
+                return 1
+            end
+
+            rm -f $local_path
+            echo -n $remote_path | pbcopy
+            echo $remote_path
         case '*'
             echo "usage: m start <name> [-- <claude prompt>]"
             echo "       m cleanup [--force] [--reap]"
             echo "       m prune [--dry-run] [--min-age <duration>]"
+            echo "       m paste-image"
             return 1
     end
 end
