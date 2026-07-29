@@ -25,21 +25,21 @@ claude/    → ~/.claude/                   Claude Code settings, hooks, skills
 starship/  → ~/.config/starship.toml      Prompt configuration
 ghostty/   → ~/.config/ghostty/           Terminal emulator config (macOS)
 tmux/      → ~/.tmux.conf                 Status bar, mouse mode
-worktrunk/ → ~/.config/worktrunk/         wt aliases + tmux window-rename hooks
+worktrunk/ → ~/.config/worktrunk/         wt aliases + tmux/herdr window-rename hooks
 ```
 
 ## Worktree Workflow
 
 The `m` fish function (`fish/.config/fish/functions/m.fish`) wraps worktrunk +
-tmux + Claude Code into three verbs:
+tmux/herdr + Claude Code into three verbs:
 
 ```
 m start my-feature             # wt switch --create -x claude:
                                 #   creates worktree + branch, cds in,
-                                #   renames the tmux window, launches claude
+                                #   renames the tmux window/herdr tab, launches claude
 m start my-feature -- "prompt" # same, but starts claude with an initial prompt
 m cleanup                      # wt remove (branch deleted if merged), then
-                                #   kills the tmux window. Refuses a dirty tree.
+                                #   kills the tmux window/herdr tab. Refuses a dirty tree.
 m cleanup --force              # remove even with uncommitted changes
 m cleanup --reap               # also kill leftover dev servers in the worktree
 m prune                        # wt step prune: bulk-remove worktrees/branches
@@ -47,12 +47,14 @@ m prune                        # wt step prune: bulk-remove worktrees/branches
 m prune --dry-run              # preview what prune would remove
 ```
 
-`m cleanup` runs `wt remove` first and only kills the window if it succeeds, so
-uncommitted work can't be silently destroyed. The tmux window-rename comes from
-the worktrunk `post-start`/`post-switch` hooks in `worktrunk/`. `m prune` skips
-the main worktree, locked worktrees, and anything younger than a day; it's for
-tidying up worktrees left behind after a manual merge or a forgotten `m
-cleanup` — it doesn't kill tmux windows for the worktrees it removes.
+`m cleanup` runs `wt remove` first and only kills the window/tab if it
+succeeds, so uncommitted work can't be silently destroyed. It detects tmux via
+`$TMUX` and herdr via `$HERDR_ENV`. The window/tab rename comes from the
+worktrunk `post-start`/`post-switch` hooks in `worktrunk/`, which use the same
+detection. `m prune` skips the main worktree, locked worktrees, and anything
+younger than a day; it's for tidying up worktrees left behind after a manual
+merge or a forgotten `m cleanup` — it doesn't kill windows/tabs for the
+worktrees it removes.
 
 `m` also has a `paste-image` verb, unrelated to worktrees: it grabs the
 clipboard image (via `pngpaste`, macOS only), scps it to `hl-claude:/tmp/`,

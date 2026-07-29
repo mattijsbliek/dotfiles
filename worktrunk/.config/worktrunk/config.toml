@@ -1,8 +1,10 @@
 [post-start]
-tmux-rename = "tmux rename-window '{{ branch }}' 2>/dev/null || true"
+tmux-rename = "test -n \"$TMUX\" && tmux rename-window '{{ branch }}' 2>/dev/null || true"
+herdr-rename = "test -n \"$HERDR_ENV\" && herdr tab rename \"$HERDR_TAB_ID\" '{{ branch }}' 2>/dev/null || true"
 
 [post-switch]
-tmux-rename = "tmux rename-window '{{ branch }}' 2>/dev/null || true"
+tmux-rename = "test -n \"$TMUX\" && tmux rename-window '{{ branch }}' 2>/dev/null || true"
+herdr-rename = "test -n \"$HERDR_ENV\" && herdr tab rename \"$HERDR_TAB_ID\" '{{ branch }}' 2>/dev/null || true"
 
 [aliases]
 issue = '''

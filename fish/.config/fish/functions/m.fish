@@ -5,14 +5,19 @@ function m --description "Worktree workflow helper (worktrunk + tmux + claude) a
             # m start my-feature -- "prompt" → same, but starts claude with an initial prompt
             wt switch --create -x claude $argv[2..-1]
         case cleanup
-            # Tear down the current worktree, then kill the tmux window.
+            # Tear down the current worktree, then kill the tmux window (or
+            # herdr tab, whichever we're running in).
             # `wt remove` refuses a dirty worktree (and deletes the branch
             # only if it's already merged), so the window is killed only
             # when teardown actually succeeded. Extra flags pass through:
             #   m cleanup --force   remove even if dirty
             #   m cleanup --reap    also kill leftover dev servers
             wt remove $argv[2..-1]; or return 1
-            test -n "$TMUX"; and tmux kill-window
+            if test -n "$TMUX"
+                tmux kill-window
+            else if test -n "$HERDR_ENV"
+                herdr tab close "$HERDR_TAB_ID"
+            end
         case prune
             # Bulk-remove worktrees/branches already merged into the default
             # branch (stale ones left behind after a manual merge, forgotten
