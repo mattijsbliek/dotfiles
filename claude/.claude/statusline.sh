@@ -1,6 +1,6 @@
 #!/bin/bash
-# Claude Code status line: repo | branch | worktree (if in one) | context tokens used | model.
-# e.g. "Clientroom | 🌿 (mattijs/JIRA-1-fix) | 🌳 mattijs/JIRA-1-fix | 20k (10%) | 🤖 Opus 4.6"
+# Claude Code status line: context tokens used | repo | branch | worktree (if in one) | model.
+# e.g. "20k (10%) | Clientroom | 🌿 (mattijs/JIRA-1-fix) | 🌳 mattijs/JIRA-1-fix | 🤖 Opus 4.6"
 # Token color: grey under 100k tokens, yellow 100k-200k, red above 200k.
 
 input=$(cat)
@@ -52,10 +52,10 @@ fi
 
 MODEL=$(echo "$input" | jq -r '.model.display_name // empty')
 
-OUTPUT="${CYAN}${REPO}${RESET}"
+OUTPUT="${TOKEN_COLOR}${TOKEN_DISPLAY} (${PCT}%)${RESET}"
+OUTPUT="${OUTPUT} | ${CYAN}${REPO}${RESET}"
 [ -n "$BRANCH" ] && OUTPUT="${OUTPUT} | ${GREEN}🌿 (${BRANCH})${RESET}"
 [ -n "$WORKTREE" ] && OUTPUT="${OUTPUT} | ${GREEN}🌳 ${WORKTREE}${RESET}"
-OUTPUT="${OUTPUT} | ${TOKEN_COLOR}${TOKEN_DISPLAY} (${PCT}%)${RESET}"
 [ -n "$MODEL" ] && OUTPUT="${OUTPUT} | ${MAGENTA}🤖 ${MODEL}${RESET}"
 
 printf '%b\n' "$OUTPUT"
