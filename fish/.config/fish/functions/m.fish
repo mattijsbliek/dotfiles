@@ -9,10 +9,14 @@ function m --description "Worktree workflow helper (worktrunk + tmux + claude) a
             # herdr tab, whichever we're running in).
             # `wt remove` refuses a dirty worktree (and deletes the branch
             # only if it's already merged), so the window is killed only
-            # when teardown actually succeeded. Extra flags pass through:
+            # when teardown actually succeeded. --foreground makes it block
+            # until the directory is actually gone — otherwise removal
+            # continues in the background and gets killed along with the
+            # window/tab before it finishes, leaving an empty leftover dir.
+            # Extra flags pass through:
             #   m cleanup --force   remove even if dirty
             #   m cleanup --reap    also kill leftover dev servers
-            wt remove $argv[2..-1]; or return 1
+            wt remove --foreground $argv[2..-1]; or return 1
             if test -n "$TMUX"
                 tmux kill-window
             else if test -n "$HERDR_ENV"
