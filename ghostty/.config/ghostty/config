@@ -56,3 +56,4 @@ cursor-style = block
 cursor-style-blink = false
 mouse-shift-capture = false
 scroll-to-bottom = no-keystroke
+desktop-notifications = true
