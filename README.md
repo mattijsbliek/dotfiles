@@ -14,7 +14,7 @@ The bootstrap script installs dependencies (fish, neovim, stow, starship, the `g
 
 ## Structure
 
-Nine stow packages, each mirroring the target directory structure under `$HOME`:
+Ten stow packages, each mirroring the target directory structure under `$HOME`:
 
 ```
 bash/      → ~/.bash_profile, ~/.bashrc   Sources secrets, execs fish for interactive sessions
@@ -26,6 +26,7 @@ starship/  → ~/.config/starship.toml      Prompt configuration
 ghostty/   → ~/.config/ghostty/           Terminal emulator config (macOS)
 tmux/      → ~/.tmux.conf                 Status bar, mouse mode
 worktrunk/ → ~/.config/worktrunk/         wt aliases + tmux/herdr window-rename hooks
+herdr/     → ~/.config/herdr/config.toml  Herdr terminal manager config
 ```
 
 ## Worktree Workflow
