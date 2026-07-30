@@ -16,7 +16,10 @@ function m --description "Worktree workflow helper (worktrunk + tmux + claude) a
             if test -n "$TMUX"
                 tmux kill-window
             else if test -n "$HERDR_ENV"
-                herdr tab close "$HERDR_TAB_ID"
+                # herdr refuses to close a tab if it's the last one in its
+                # workspace (would leave an empty workspace behind), so fall
+                # back to closing the whole workspace in that case.
+                herdr tab close "$HERDR_TAB_ID" 2>/dev/null; or herdr workspace close "$HERDR_WORKSPACE_ID"
             end
         case prune
             # Bulk-remove worktrees/branches already merged into the default

@@ -49,7 +49,9 @@ m prune --dry-run              # preview what prune would remove
 
 `m cleanup` runs `wt remove` first and only kills the window/tab if it
 succeeds, so uncommitted work can't be silently destroyed. It detects tmux via
-`$TMUX` and herdr via `$HERDR_ENV`. The window/tab rename comes from the
+`$TMUX` and herdr via `$HERDR_ENV`. On herdr, if the tab is the last one in its
+workspace, herdr refuses to close it, so `m cleanup` closes the workspace
+instead. The window/tab rename comes from the
 worktrunk `post-start`/`post-switch` hooks in `worktrunk/`, which use the same
 detection. `m prune` skips the main worktree, locked worktrees, and anything
 younger than a day; it's for tidying up worktrees left behind after a manual
