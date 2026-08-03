@@ -3,7 +3,9 @@ function m --description "Worktree workflow helper (worktrunk + tmux + claude) a
         case start
             # m start my-feature                              → new worktree + branch, cd, rename window, launch claude
             # m start my-feature -- "prompt"                   → same, but starts claude with an initial prompt
-            # m start https://github.com/OWNER/REPO/issues/N   → worktree name derived from the issue title
+            # m start https://github.com/OWNER/REPO/issues/N   → worktree name derived from the issue title,
+            #                                                     claude launched with "Execute <url>" as its prompt
+            #                                                     (unless a prompt is given explicitly via --)
             set -l parts (string match -r '^https?://github\.com/([^/]+)/([^/]+)/issues/([0-9]+)' -- $argv[2])
             if test (count $parts) -eq 4
                 set -l owner $parts[2]
@@ -22,7 +24,11 @@ function m --description "Worktree workflow helper (worktrunk + tmux + claude) a
                         set slug (echo $custom | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]' '-' | tr -s '-' | sed 's/^-*//;s/-*$//')
                     end
                 end
-                wt switch --create -x claude "issue-$num-$slug" $argv[3..-1]
+                if test (count $argv) -gt 2
+                    wt switch --create -x claude "issue-$num-$slug" $argv[3..-1]
+                else
+                    wt switch --create -x claude "issue-$num-$slug" -- "Execute $argv[2]"
+                end
             else
                 wt switch --create -x claude $argv[2..-1]
             end
