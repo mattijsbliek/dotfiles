@@ -3,3 +3,4 @@
 
 # Source .bashrc for interactive session handling
 [ -f ~/.bashrc ] && source ~/.bashrc
+. "$HOME/.cargo/env"

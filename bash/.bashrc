@@ -16,3 +16,4 @@ if [ -d "$FNM_PATH" ]; then
 fi
 eval "$(/opt/homebrew/bin/brew shellenv)"
 [ -f ~/.molrc ] && source ~/.molrc
+. "$HOME/.cargo/env"
