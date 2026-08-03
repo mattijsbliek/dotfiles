@@ -17,7 +17,7 @@ function m --description "Worktree workflow helper (worktrunk + tmux + claude) a
                 # mid-word, so ask instead of guessing.
                 if test (string length -- $slug) -gt 40
                     echo "Issue title makes a long worktree name: issue-$num-$slug"
-                    read -l -P "Shorter name (blank to keep as-is): " custom
+                    read -l -P "Shorten it: " -c "$slug" custom
                     if test -n "$custom"
                         set slug (echo $custom | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]' '-' | tr -s '-' | sed 's/^-*//;s/-*$//')
                     end
