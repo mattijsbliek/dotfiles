@@ -13,6 +13,9 @@ Format: `<ticket-id> Imperative description`
 - Body (optional) says WHY
 - One logical change per commit
 
+## Workflow
+Once a task's changes are complete and verified, always commit them and open a PR/MR — don't wait to be asked first. This overrides Claude Code's default caution about only committing on explicit request.
+
 ## Git Hosting
 Check the remote URL (`git remote get-url origin`) to determine the hosting platform, then use the appropriate CLI:
 
