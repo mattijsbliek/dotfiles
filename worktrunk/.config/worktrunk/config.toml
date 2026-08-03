@@ -17,6 +17,6 @@ else
   title=$(gh issue view "$num" --json title -q .title)
 fi
 
-slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]' '-' | sed 's/-*$//')
+slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]' '-' | tr -s '-' | sed 's/^-*//;s/-*$//')
 wt switch --create "issue-${num}-${slug}"
 '''

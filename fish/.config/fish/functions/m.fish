@@ -1,9 +1,31 @@
 function m --description "Worktree workflow helper (worktrunk + tmux + claude) and misc utilities"
     switch $argv[1]
         case start
-            # m start my-feature            → new worktree + branch, cd, rename window, launch claude
-            # m start my-feature -- "prompt" → same, but starts claude with an initial prompt
-            wt switch --create -x claude $argv[2..-1]
+            # m start my-feature                              → new worktree + branch, cd, rename window, launch claude
+            # m start my-feature -- "prompt"                   → same, but starts claude with an initial prompt
+            # m start https://github.com/OWNER/REPO/issues/N   → worktree name derived from the issue title
+            set -l parts (string match -r '^https?://github\.com/([^/]+)/([^/]+)/issues/([0-9]+)' -- $argv[2])
+            if test (count $parts) -eq 4
+                set -l owner $parts[2]
+                set -l repo $parts[3]
+                set -l num $parts[4]
+                set -l title (gh issue view $num --repo "$owner/$repo" --json title -q .title)
+                or return 1
+                set -l slug (echo $title | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]' '-' | tr -s '-' | sed 's/^-*//;s/-*$//')
+                # Long titles make unwieldy worktree/branch names (tmux window titles,
+                # prompts, etc) — no clean way to auto-truncate without cutting words
+                # mid-word, so ask instead of guessing.
+                if test (string length -- $slug) -gt 40
+                    echo "Issue title makes a long worktree name: issue-$num-$slug"
+                    read -l -P "Shorten it: " -c "$slug" custom
+                    if test -n "$custom"
+                        set slug (echo $custom | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]' '-' | tr -s '-' | sed 's/^-*//;s/-*$//')
+                    end
+                end
+                wt switch --create -x claude "issue-$num-$slug" $argv[3..-1]
+            else
+                wt switch --create -x claude $argv[2..-1]
+            end
         case cleanup
             # Tear down the current worktree, then kill the tmux window (or
             # herdr tab, whichever we're running in).

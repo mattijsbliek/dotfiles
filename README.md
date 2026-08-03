@@ -39,6 +39,8 @@ m start my-feature             # wt switch --create -x claude:
                                 #   creates worktree + branch, cds in,
                                 #   renames the tmux window/herdr tab, launches claude
 m start my-feature -- "prompt" # same, but starts claude with an initial prompt
+m start <github-issue-url>     # worktree name derived from the issue title
+                                #   (e.g. https://github.com/OWNER/REPO/issues/2)
 m cleanup                      # wt remove (branch deleted if merged), then
                                 #   kills the tmux window/herdr tab. Refuses a dirty tree.
 m cleanup --force              # remove even with uncommitted changes
