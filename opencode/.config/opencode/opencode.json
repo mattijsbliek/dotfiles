@@ -38,6 +38,11 @@
           "created_at": "2023-02-28T18:56:42Z",
           "name": "Claude Opus 4.8"
         },
+        "claude-opus-5": {
+          "id": "claude-opus-5",
+          "created_at": "2023-02-28T18:56:42Z",
+          "name": "Claude Opus 5"
+        },
         "gemini-2.5-pro": {
           "id": "gemini-2.5-pro",
           "created_at": "2023-02-28T18:56:42Z",
