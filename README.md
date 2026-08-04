@@ -22,7 +22,7 @@ fish/      → ~/.config/fish/              Shell config, aliases, functions
 nvim/      → ~/.config/nvim/              LazyVim-based Neovim config
 git/       → ~/.gitconfig, etc.           Git aliases, diff-so-fancy, SSH signing
 claude/    → ~/.claude/                   Claude Code settings, hooks, skills
-opencode/  → ~/.config/opencode/          opencode global config
+opencode/  → ~/.config/opencode/          opencode config, LiteLLM provider + plugins
 starship/  → ~/.config/starship.toml      Prompt configuration
 ghostty/   → ~/.config/ghostty/           Terminal emulator config (macOS)
 tmux/      → ~/.tmux.conf                 Status bar, mouse mode
