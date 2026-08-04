@@ -39,5 +39,10 @@ claude/.claude/teams/
 claude/.claude/memory/
 claude/.claude/.DS_Store
 
+# Herdr runtime state
+herdr/.config/herdr/session.json
+herdr/.config/herdr/*.log
+herdr/.config/herdr/.plugins.lock
+
 # OS
 .DS_Store
