@@ -80,5 +80,6 @@
   "remoteControlAtStartup": false,
   "skipAutoPermissionPrompt": true,
   "tui": "fullscreen",
-  "enableWorkflows": true
+  "enableWorkflows": true,
+  "workflowSizeGuideline": "small"
 }
