@@ -1,7 +1,8 @@
 {
   "env": {
     "ENABLE_LSP_TOOL": "1",
-    "ENABLE_TOOL_SEARCH": "auto:5"
+    "ENABLE_TOOL_SEARCH": "auto:5",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
     "allow": [
@@ -78,5 +79,6 @@
   "skipDangerousModePermissionPrompt": true,
   "remoteControlAtStartup": false,
   "skipAutoPermissionPrompt": true,
-  "tui": "fullscreen"
+  "tui": "fullscreen",
+  "enableWorkflows": true
 }
