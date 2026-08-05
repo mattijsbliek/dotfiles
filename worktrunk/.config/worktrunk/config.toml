@@ -11,6 +11,17 @@ for f in "{{ primary_worktree_path }}"/.env*; do
     fi
 done
 '''
+# Also gitignored (via .gitignore_global), so also missing in a fresh worktree.
+# Matters mostly for enabledMcpjsonServers: a missing project MCP server isn't
+# prompted for, it's just silently absent. mkdir because a repo may have
+# nothing else tracked under .claude/.
+copy-claude-settings = '''
+src="{{ primary_worktree_path }}/.claude/settings.local.json"
+if [ -f "$src" ] && [ ! -e .claude/settings.local.json ]; then
+    mkdir -p .claude
+    cp "$src" .claude/
+fi
+'''
 
 [post-start]
 tmux-rename = "test -n \"$TMUX\" && tmux rename-window '{{ branch }}' 2>/dev/null || true"

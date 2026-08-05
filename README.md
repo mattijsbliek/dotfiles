@@ -62,13 +62,21 @@ younger than a day; it's for tidying up worktrees left behind after a manual
 merge or a forgotten `m cleanup` — it doesn't kill windows/tabs for the
 worktrees it removes.
 
-A fresh worktree only contains tracked files, so gitignored env files are
-missing and the app won't boot. The worktrunk `pre-start` hook in `worktrunk/`
-copies every top-level `.env*` file from the primary worktree into the new one
-— a glob because repos differ (`.env.development` in some, `.env` in others).
-Existing files are never overwritten, so tracked `.env.example` is left alone.
-It's `pre-start` (blocking) rather than `post-start` (background) so the files
-are in place before `-x claude` starts.
+A fresh worktree only contains tracked files, so gitignored files are missing.
+Two worktrunk `pre-start` hooks in `worktrunk/` seed them from the primary
+worktree:
+
+- `copy-env` copies every top-level `.env*` file — a glob because repos differ
+  (`.env.development` in some, `.env` in others). The app won't boot without
+  them.
+- `copy-claude-settings` copies `.claude/settings.local.json`, which
+  `.gitignore_global` ignores. Mostly for `enabledMcpjsonServers` — a missing
+  project MCP server isn't prompted for, it's just silently absent — and to
+  avoid re-approving the same permissions in every worktree.
+
+Neither overwrites an existing file, so a tracked `.env.example` is left alone.
+Both are `pre-start` (blocking) rather than `post-start` (background) so the
+files are in place before `-x claude` starts.
 
 `m` also has a `paste-image` verb, unrelated to worktrees: it grabs the
 clipboard image (via `pngpaste`, macOS only), scps it to `hl-claude:/tmp/`,
