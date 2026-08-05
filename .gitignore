@@ -3,6 +3,9 @@ bash/.secrets
 fish/.config/fish/conf.d/secrets.fish
 claude/.claude/settings.local.json
 claude/.claude/CLAUDE.local.md
+# Machine-local Claude rules (e.g. work ticket conventions). The rest of
+# claude/.claude/rules/ IS synced — only the local-* files stay off this repo.
+claude/.claude/rules/local-*.md
 
 # Machine-specific state
 fish/.config/fish/fish_variables

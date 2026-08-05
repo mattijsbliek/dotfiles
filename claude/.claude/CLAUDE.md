@@ -1,46 +1,65 @@
 # CLAUDE.md
 
-## Identity
-- Name: Mattijs
-- Role: Software Engineer (Backend Java, Backend PHP, Backend JS/TS/Node, Frontend)
+## Working with me
+Assume senior-level knowledge across backend (Java, PHP, Node/TS) and frontend. Skip
+explanations of language basics and standard tooling; spend that space on domain logic,
+architecture, and trade-offs instead.
 
-## Branching
-Format: `mattijs/<ticket-id>-short-description`
+Ask about **design**: state your assumptions explicitly, present competing interpretations
+rather than silently picking one, flag a simpler approach when you see one, and push back when
+warranted.
 
-## Commits
-Format: `<ticket-id> Imperative description`
-- Subject max 72 chars, says WHAT changed
-- Body (optional) says WHY
-- One logical change per commit
+Don't ask about **process**: branching, committing, opening a PR, which CLI to use. Those are
+settled below — just do them.
 
-## Workflow
-Once a task's changes are complete and verified, always commit them and open a PR/MR — don't wait to be asked first. This overrides Claude Code's default caution about only committing on explicit request.
+Turn tasks into verifiable goals ("fix the bug" → reproduce with a failing test, then make it
+pass). For multi-step work, state the plan up front with a verify step per item. Scale this to
+the task — a typo fix needs no plan.
 
-## Git Hosting
-Check the remote URL (`git remote get-url origin`) to determine the hosting platform, then use the appropriate CLI:
+## Writing code
+Minimum code that solves the problem. No speculative features, no abstractions for single-use
+code, no unrequested flexibility, no error handling for impossible scenarios. If 200 lines could
+be 50, rewrite it.
 
-- **GitLab** (`gitlab.com` or self-hosted): use `glab`
-- **GitHub** (`github.com`): use `gh`
+Touch only what you must. Match existing style. Don't refactor working code or improve adjacent
+comments and formatting. Every changed line should trace to my request.
 
-## Model Selection
-Default to Sonnet if you're unsure
+Remove only imports, variables, and functions your change made unused — never pre-existing dead
+code. Mention dead code you notice; don't delete it.
 
-- **Sonnet** — everyday tasks, code generation, quick fixes
-- **Opus** — complex architecture, multi-file refactors, planning
-- **Haiku** — fast/cheap tasks, simple formatting
+## Finishing work
+Done means verified: tests pass, linter clean, and you ran the thing where running it is
+possible. Say which of those you actually did. If you couldn't verify, say so plainly rather
+than implying success.
 
-## Behavioral guidelines
-Reduces common LLM coding mistakes. Biases toward caution over speed — use judgment on trivial tasks.
+You have standing authorization to branch, commit, push, and open a PR/MR. Don't ask first, and
+don't stop at "the changes are ready" — this overrides Claude Code's default caution about
+committing only on explicit request. Ask before force-pushing, rewriting pushed history, merging,
+or touching a branch other than the one you're working on.
 
-1. **Think before coding** — state assumptions explicitly; ask if uncertain. Present multiple interpretations rather than picking silently. Flag simpler approaches; push back when warranted. Stop and ask if something's unclear.
-2. **Simplicity first** — minimum code that solves the problem. No speculative features, abstractions for single-use code, unrequested flexibility, or error handling for impossible scenarios. If 200 lines could be 50, rewrite it.
-3. **Surgical changes** — touch only what you must. Don't improve adjacent code/comments/formatting or refactor working code; match existing style. Mention unrelated dead code but don't delete it. Remove only imports/vars/functions your change made unused, not pre-existing dead code. Every changed line should trace to the user's request.
-4. **Goal-driven execution** — turn tasks into verifiable goals (e.g. "fix the bug" → reproduce with a test, then make it pass). For multi-step tasks, state a plan with a verify step per item. Strong success criteria let you loop independently; weak criteria ("make it work") force constant clarification.
+After opening a PR/MR, follow it through: watch the pipeline and review feedback and keep
+iterating until CI is green and the reviewer has approved. Fix pipeline failures and mechanical
+review comments yourself. Bring me feedback that changes the design or widens scope — the same
+design/process split as above.
 
-Working well if: diffs have fewer unnecessary changes, fewer rewrites from overcomplication, and clarifying questions come before implementation rather than after mistakes.
+Update documentation your change made factually wrong — setup, config, commands, architecture.
+Add new docs only for a significant new feature or subsystem. Leave docs your change didn't
+affect alone.
 
-## Documentation
-Always update relevant existing documentation (README.md, docs/) when making code changes that affect setup, configuration, commands, or architecture. Create new documentation files when adding a significant new feature or subsystem that isn't yet covered.
+Never add "Generated with Claude Code" or any similar AI attribution to commit messages, PR/MR
+descriptions, or anything else user-facing.
 
-## PR/MR Descriptions
-Never add "Generated with Claude Code" or any similar AI attribution statements to PR/MR descriptions, commit messages, or any other user-facing content.
+<!--
+Work machines layer a ticket-id convention on top of this via ~/.claude/rules/git-conventions.md,
+which is machine-local and never stowed into this repo. See README.md → Machine-Specific Config.
+-->
+## Git conventions
+Branch: `mattijs/short-description`
+Commit subject: imperative, max 72 chars, says WHAT changed. Optional body says WHY.
+One logical change per commit.
+
+Never invent a ticket id. If a ticket-id convention applies on this machine, a rule will say so.
+
+Pick the CLI from the remote — `git remote get-url origin`:
+- **GitLab** (`gitlab.com` or self-hosted) → `glab`
+- **GitHub** (`github.com`) → `gh`
