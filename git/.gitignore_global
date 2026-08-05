@@ -3,3 +3,4 @@
 .intelephense/
 **/.claude/settings.local.json
 .claude/worktrees/
+.playwright-mcp/

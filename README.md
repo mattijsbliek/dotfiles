@@ -70,9 +70,12 @@ worktree:
   (`.env.development` in some, `.env` in others). The app won't boot without
   them.
 - `copy-claude-settings` copies `.claude/settings.local.json`, which
-  `.gitignore_global` ignores. Mostly for `enabledMcpjsonServers` — a missing
-  project MCP server isn't prompted for, it's just silently absent — and to
-  avoid re-approving the same permissions in every worktree.
+  `.gitignore_global` ignores. Mainly the permission allowlist — `m cleanup`
+  deletes the worktree, so approvals never accumulate and would otherwise be
+  re-granted every time. It also carries `enabledMcpjsonServers`, which matters
+  for any *project*-scoped MCP server: unlike a permission, a server that isn't
+  enabled produces no prompt, it's just silently absent. User-scoped servers
+  (see below) need no such entry and work in worktrees regardless.
 
 Neither overwrites an existing file, so a tracked `.env.example` is left alone.
 Both are `pre-start` (blocking) rather than `post-start` (background) so the
@@ -115,6 +118,34 @@ Files that vary per machine are git-ignored and must be created locally:
 | `~/.claude/settings.local.json` | Work-specific Claude settings (API keys, env vars, hooks). Note: `enabledPlugins` is **not** read from this file by Claude Code — plugin state must live in `settings.json` |
 | `~/.claude/CLAUDE.local.md` | Work-specific Claude instructions (role, branching) |
 | `~/.gitconfig.local` | Machine-specific git settings (e.g., email) |
+| `~/.claude.json` | User-scoped MCP servers (see below), plus Claude Code's own caches and per-project history. Never stowed — it's mostly machine state |
+
+### Playwright MCP server
+
+Registered at **user** scope so every project on the machine can drive a real
+browser (navigate, click, read the accessibility tree) to verify changes end to
+end — not just run the Playwright suite via `npm run e2e`, which is a plain
+Bash command and needs no MCP. Recreate it on a new machine with:
+
+```bash
+claude mcp add --scope user playwright -- \
+  npx -y @playwright/mcp@latest --headless --output-dir .playwright-mcp
+```
+
+- **user scope, not a per-repo `.mcp.json`** — one registration covers every
+  repo, needs no per-project approval, adds no tracked file to shared repos,
+  and works in fresh worktrees automatically.
+- **`--headless`** — these machines have no `DISPLAY`.
+- **`--output-dir`** — the server writes accessibility snapshots and console
+  logs to files and returns links, so the refs needed to click an element live
+  on disk. `.playwright-mcp/` is in `.gitignore_global`.
+- `--vision` is deprecated (it's `--caps=vision` now) and is not used; the
+  default snapshot mode returns structured element refs, and screenshots are
+  still available via `browser_take_screenshot`.
+
+`tideloop` also declares playwright in its own tracked `.mcp.json`. Project
+scope wins there, so it keeps using its own copy; `claude mcp list` reports the
+overlap as a warning, which is expected and harmless.
 
 ### Why `settings.json` isn't stowed
 
