@@ -23,7 +23,7 @@
 	changelog = diff-tree --no-commit-id --name-only
 	amend = commit --amend -C HEAD
 [push]
-	default = upstream
+	default = simple
 	autoSetupRemote = true
 [merge]
 	tool = vimdiff
