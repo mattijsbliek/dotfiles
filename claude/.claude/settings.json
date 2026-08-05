@@ -38,6 +38,7 @@
       "Bash(npm:*)",
       "Bash(npx:*)",
       "Bash(yarn:*)",
+      "Bash(composer validate --no-check-all:*)",
       "Bash(docker:*)",
       "Bash(test:*)",
       "Skill(update-config)",
