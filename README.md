@@ -21,7 +21,7 @@ bash/      → ~/.bash_profile, ~/.bashrc   Sources secrets, execs fish for inte
 fish/      → ~/.config/fish/              Shell config, aliases, functions
 nvim/      → ~/.config/nvim/              LazyVim-based Neovim config
 git/       → ~/.gitconfig, etc.           Git aliases, diff-so-fancy, SSH signing
-claude/    → ~/.claude/                   Claude Code settings, hooks, skills
+claude/    → ~/.claude/                   Claude Code settings, hooks, skills, rules
 opencode/  → ~/.config/opencode/          opencode config, LiteLLM provider + plugins
 starship/  → ~/.config/starship.toml      Prompt configuration
 ghostty/   → ~/.config/ghostty/           Terminal emulator config (macOS)
@@ -116,7 +116,7 @@ Files that vary per machine are git-ignored and must be created locally:
 | `~/.secrets` | API tokens in bash syntax, sourced by both shells (see `secrets.example`) |
 | `~/.claude/settings.json` | Plugin toggles (`enabledPlugins`) and any other per-machine overrides. Not stowed — see below. |
 | `~/.claude/settings.local.json` | Work-specific Claude settings (API keys, env vars, hooks). Note: `enabledPlugins` is **not** read from this file by Claude Code — plugin state must live in `settings.json` |
-| `~/.claude/CLAUDE.local.md` | Work-specific Claude instructions (role, branching) |
+| `~/.claude/rules/local-*.md` | Work-specific Claude instructions (e.g. ticket-id branch and commit conventions). Only the `local-*` files are machine-local — the rest of `rules/` is stowed and shared. Gitignored so employer conventions never reach this public repo. Preferred over `~/.claude/CLAUDE.local.md`, which Claude Code documents only at *project* root, not user scope |
 | `~/.gitconfig.local` | Machine-specific git settings (e.g., email) |
 | `~/.claude.json` | User-scoped MCP servers (see below), plus Claude Code's own caches and per-project history. Never stowed — it's mostly machine state |
 
