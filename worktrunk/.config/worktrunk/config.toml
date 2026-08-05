@@ -1,3 +1,17 @@
+[pre-start]
+# Env files are gitignored, so a fresh worktree has none and the app won't
+# boot. Copy them from the primary worktree (not `base` — that's whichever
+# worktree you happened to run `m start` from). Repos differ: .env.development
+# in clientroom/tideloop, .env in josie-shop, hence the glob. pre-start rather
+# than post-start so the files exist before `-x claude` runs.
+copy-env = '''
+for f in "{{ primary_worktree_path }}"/.env*; do
+    if [ -f "$f" ] && [ ! -e "${f##*/}" ]; then
+        cp "$f" .
+    fi
+done
+'''
+
 [post-start]
 tmux-rename = "test -n \"$TMUX\" && tmux rename-window '{{ branch }}' 2>/dev/null || true"
 herdr-rename = "test -n \"$HERDR_ENV\" && herdr tab rename \"$HERDR_TAB_ID\" '{{ branch }}' 2>/dev/null || true"

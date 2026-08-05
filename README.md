@@ -26,7 +26,7 @@ opencode/  → ~/.config/opencode/          opencode config, LiteLLM provider + 
 starship/  → ~/.config/starship.toml      Prompt configuration
 ghostty/   → ~/.config/ghostty/           Terminal emulator config (macOS)
 tmux/      → ~/.tmux.conf                 Status bar, mouse mode
-worktrunk/ → ~/.config/worktrunk/         wt aliases + tmux/herdr window-rename hooks
+worktrunk/ → ~/.config/worktrunk/         wt aliases + env-copy/window-rename hooks
 herdr/     → ~/.config/herdr/config.toml  Herdr terminal manager config
 ```
 
@@ -61,6 +61,14 @@ detection. `m prune` skips the main worktree, locked worktrees, and anything
 younger than a day; it's for tidying up worktrees left behind after a manual
 merge or a forgotten `m cleanup` — it doesn't kill windows/tabs for the
 worktrees it removes.
+
+A fresh worktree only contains tracked files, so gitignored env files are
+missing and the app won't boot. The worktrunk `pre-start` hook in `worktrunk/`
+copies every top-level `.env*` file from the primary worktree into the new one
+— a glob because repos differ (`.env.development` in some, `.env` in others).
+Existing files are never overwritten, so tracked `.env.example` is left alone.
+It's `pre-start` (blocking) rather than `post-start` (background) so the files
+are in place before `-x claude` starts.
 
 `m` also has a `paste-image` verb, unrelated to worktrees: it grabs the
 clipboard image (via `pngpaste`, macOS only), scps it to `hl-claude:/tmp/`,
