@@ -42,6 +42,10 @@ iterating until CI is green and the reviewer has approved. Fix pipeline failures
 review comments yourself. Bring me feedback that changes the design or widens scope — the same
 design/process split as above.
 
+When you address a review comment, reply to that thread with what changed (and why, if it
+wasn't purely mechanical) and resolve it as part of the same push — don't leave threads open for
+a later pass, and don't just push silently and let the diff speak for itself.
+
 Update documentation your change made factually wrong — setup, config, commands, architecture.
 Add new docs only for a significant new feature or subsystem. Leave docs your change didn't
 affect alone.
