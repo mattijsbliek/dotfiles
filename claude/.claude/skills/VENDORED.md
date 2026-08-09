@@ -25,3 +25,4 @@ against the source below and copy over what you want.
 | to-tickets | mattpocock/skills | skills/engineering/to-tickets/SKILL.md |
 | ubiquitous-language | mattpocock/skills | skills/deprecated/ubiquitous-language/SKILL.md |
 | wayfinder | mattpocock/skills | skills/engineering/wayfinder/SKILL.md |
+| attach-github-assets | intercom/2x-skills | plugins/pr-tools/skills/attach-github-assets/SKILL.md |
