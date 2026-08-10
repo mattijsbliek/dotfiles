@@ -12,7 +12,6 @@ against the source below and copy over what you want.
 | codebase-design | mattpocock/skills | skills/engineering/codebase-design/SKILL.md |
 | diagnosing-bugs | mattpocock/skills | skills/engineering/diagnosing-bugs/SKILL.md |
 | domain-modeling | mattpocock/skills | skills/engineering/domain-modeling/SKILL.md |
-| edit-article | mattpocock/skills | skills/personal/edit-article/SKILL.md |
 | grill-with-docs | mattpocock/skills | skills/engineering/grill-with-docs/SKILL.md |
 | grilling | mattpocock/skills | skills/productivity/grilling/SKILL.md |
 | handoff | mattpocock/skills | skills/productivity/handoff/SKILL.md |
@@ -23,6 +22,5 @@ against the source below and copy over what you want.
 | tdd | mattpocock/skills | skills/engineering/tdd/SKILL.md |
 | to-spec | mattpocock/skills | skills/engineering/to-spec/SKILL.md |
 | to-tickets | mattpocock/skills | skills/engineering/to-tickets/SKILL.md |
-| ubiquitous-language | mattpocock/skills | skills/deprecated/ubiquitous-language/SKILL.md |
 | wayfinder | mattpocock/skills | skills/engineering/wayfinder/SKILL.md |
 | attach-github-assets | intercom/2x-skills | plugins/pr-tools/skills/attach-github-assets/SKILL.md |
