@@ -4,6 +4,14 @@ set -euo pipefail
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_DIR="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
 
+# --- Pinned tool versions ---
+# Neither tool lives in an ecosystem Dependabot understands, so these are
+# bumped by .github/workflows/bump-pinned-tools.yml, which opens a PR when a
+# newer version appears upstream. Keep the assignments on one line each — the
+# workflow rewrites them with sed.
+RTK_VERSION="v0.45.0"
+JDTLS_VERSION="1.60.0"
+
 # --- Colors ---
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -51,26 +59,43 @@ install_neovim_linux() {
 }
 
 # --- Install Eclipse JDT.LS (Linux) ---
-# No apt package exists. The snapshot tarball ships a python launcher at
-# bin/jdtls, so unpacking it and symlinking that is the whole install.
+# No apt package exists. The tarball ships a python launcher at bin/jdtls, so
+# unpacking it and symlinking that is the whole install. Take a pinned
+# milestone rather than /snapshots/, which serves nightlies — two machines
+# provisioned a week apart would otherwise get different servers.
 install_jdtls_linux() {
     local dir="$HOME/.local/share/jdtls"
-    local url="https://download.eclipse.org/jdtls/snapshots/jdt-language-server-latest.tar.gz"
+    local base="https://download.eclipse.org/jdtls/milestones/$JDTLS_VERSION"
 
     if ! command -v python3 &>/dev/null; then
         warn "jdtls needs python3 for its launcher; skipping"
         return 1
     fi
 
-    info "Downloading Eclipse JDT.LS..."
-    rm -rf "$dir"
-    mkdir -p "$dir" "$HOME/.local/bin"
-    if ! curl -fsSL "$url" | tar -xz -C "$dir"; then
-        warn "Could not download JDT.LS; install manually from $url"
+    # A milestone directory is immutable and names its tarball in latest.txt.
+    local tarball
+    tarball="$(curl -fsSL "$base/latest.txt" 2>/dev/null)" || true
+    if [[ -z "$tarball" ]]; then
+        warn "Could not resolve the JDT.LS $JDTLS_VERSION tarball; see $base/"
         return 1
     fi
+
+    # Unpack to a staging dir and swap it in only on success, so a failed
+    # download leaves any working install untouched.
+    info "Downloading Eclipse JDT.LS $JDTLS_VERSION..."
+    local staging="$dir.incoming"
+    rm -rf "$staging"
+    mkdir -p "$staging" "$HOME/.local/bin"
+    if ! curl -fsSL "$base/$tarball" | tar -xz -C "$staging"; then
+        warn "Could not download JDT.LS; install manually from $base/$tarball"
+        rm -rf "$staging"
+        return 1
+    fi
+    rm -rf "$dir"
+    mv "$staging" "$dir"
+    echo "$JDTLS_VERSION" >"$dir/.version"
     ln -sf "$dir/bin/jdtls" "$HOME/.local/bin/jdtls"
-    info "jdtls installed to $dir"
+    info "jdtls $JDTLS_VERSION installed to $dir"
 }
 
 # --- Language servers for Claude Code's LSP tool ---
@@ -98,7 +123,14 @@ install_lsp_servers() {
     fi
 
     if command -v jdtls &>/dev/null; then
-        return
+        # Same idea as rtk: reinstall when the pin moves. Only on Linux, where
+        # install.sh unpacks the tarball itself and stamps the version; the
+        # macOS copy is brew's to upgrade.
+        if [[ "$PLATFORM" == "macos" ]] ||
+            [[ "$(cat "$HOME/.local/share/jdtls/.version" 2>/dev/null)" == "$JDTLS_VERSION" ]]; then
+            return
+        fi
+        info "jdtls pin moved to $JDTLS_VERSION; reinstalling"
     fi
 
     info "Installing jdtls (Eclipse JDT.LS)..."
@@ -225,11 +257,21 @@ install_packages() {
     # rtk (Rust Token Killer) — filters verbose CLI output before it reaches the
     # model. Wired into Claude Code as a PreToolUse hook (see claude/.claude/settings.json).
     # Not in Homebrew or apt; the upstream installer drops a prebuilt binary in
-    # ~/.local/bin on both platforms.
-    if ! command -v rtk &>/dev/null; then
-        info "Installing rtk..."
+    # ~/.local/bin on both platforms and verifies it against the release
+    # checksums. Fetch that script from the release tag rather than master, so
+    # the installer and the binary it installs are pinned together — this hook
+    # gets to rewrite every Bash command, so it shouldn't float.
+    # Compare against the pin rather than just testing for presence, so a
+    # version bump reaches machines that already have rtk, not only fresh ones.
+    local rtk_have=""
+    if command -v rtk &>/dev/null; then
+        rtk_have="v$(rtk --version 2>/dev/null | awk '{print $2}' || true)"
+    fi
+    if [[ "$rtk_have" != "$RTK_VERSION" ]]; then
+        info "Installing rtk $RTK_VERSION${rtk_have:+ (replacing $rtk_have)}..."
         mkdir -p "$HOME/.local/bin"
-        curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh \
+        curl -fsSL "https://raw.githubusercontent.com/rtk-ai/rtk/$RTK_VERSION/install.sh" \
+            | RTK_VERSION="$RTK_VERSION" sh \
             || warn "Could not install rtk; see https://github.com/rtk-ai/rtk"
     fi
     # `rtk gain` distinguishes rtk-ai/rtk (what we want) from the unrelated

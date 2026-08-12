@@ -1,0 +1,65 @@
+name: Bump pinned tools
+
+# rtk and jdtls are pinned in install.sh (RTK_VERSION / JDTLS_VERSION). Neither
+# is a package in an ecosystem Dependabot supports — one is a GitHub release
+# tarball, the other an Eclipse milestone directory — so poll them here and
+# open a PR when something newer lands.
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve latest upstream versions
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rtk="$(gh api repos/rtk-ai/rtk/releases/latest --jq .tag_name)"
+          jdtls="$(curl -fsSL https://download.eclipse.org/jdtls/milestones/ \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -Vu | tail -1)"
+
+          # These get spliced into install.sh, so refuse anything that isn't a
+          # bare version. Also confirm the milestone actually ships a tarball —
+          # a version directory without latest.txt would break install.sh.
+          [[ "$rtk"   =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad rtk tag: $rtk"; exit 1; }
+          [[ "$jdtls" =~ ^[0-9]+\.[0-9]+\.[0-9]+$  ]] || { echo "bad jdtls: $jdtls"; exit 1; }
+          curl -fsSL "https://download.eclipse.org/jdtls/milestones/$jdtls/latest.txt" >/dev/null
+
+          echo "rtk=$rtk" >>"$GITHUB_OUTPUT"
+          echo "jdtls=$jdtls" >>"$GITHUB_OUTPUT"
+
+      - name: Rewrite the pins
+        env:
+          RTK: ${{ steps.latest.outputs.rtk }}
+          JDTLS: ${{ steps.latest.outputs.jdtls }}
+        run: |
+          set -euo pipefail
+          sed -i "s|^RTK_VERSION=.*|RTK_VERSION=\"$RTK\"|" install.sh
+          sed -i "s|^JDTLS_VERSION=.*|JDTLS_VERSION=\"$JDTLS\"|" install.sh
+          bash -n install.sh
+          git diff --stat
+
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: mattijs/bump-pinned-tools
+          delete-branch: true
+          title: Bump pinned rtk and jdtls versions
+          commit-message: Bump pinned rtk and jdtls versions
+          body: |
+            - rtk → `${{ steps.latest.outputs.rtk }}` ([releases](https://github.com/rtk-ai/rtk/releases))
+            - jdtls → `${{ steps.latest.outputs.jdtls }}` ([milestones](https://download.eclipse.org/jdtls/milestones/))
+
+            Opened by `.github/workflows/bump-pinned-tools.yml`. Re-run
+            `./install.sh` to pick these up — both installs compare against the
+            pin, so an existing machine upgrades rather than being skipped.
