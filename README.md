@@ -99,6 +99,10 @@ since that CLI deletes and recreates its managed directories on every update and
 can't coexist with a symlink into this repo. See `claude/.claude/skills/VENDORED.md`
 for each vendored skill's upstream source, to pull updates manually.
 
+One directory there isn't a skill: `tsgo-lsp/` is a local Claude Code *plugin*
+declaring a language server. `~/.claude/skills/` doubles as the discovery path
+for local plugins — see [Agent Tooling](#agent-tooling).
+
 ## Agent Tooling
 
 Three things exist purely to make coding agents cheaper and more accurate. All
@@ -112,23 +116,43 @@ to grepping for a symbol. Two halves have to line up:
 
 | Language | Server binary | Installed by | Claude Code plugin |
 |----------|---------------|--------------|--------------------|
-| TypeScript/JavaScript | `typescript-language-server` + `typescript` | `npm -g` | `typescript-lsp@claude-plugins-official` |
+| TypeScript/JavaScript | `tsgo` (`@typescript/native-preview`) | `npm -g` | `tsgo-lsp@skills-dir` (local, in this repo) |
 | PHP | `intelephense` | `npm -g` | `php-lsp@claude-plugins-official` |
 | Java | `jdtls` | brew (macOS) / Eclipse tarball into `~/.local/share/jdtls` (Linux) | `jdtls-lsp@claude-plugins-official` |
 
 The plugins carry no binaries — they only register a server that must already be
 on `PATH`. `install.sh` installs the binaries (`install_lsp_servers`) and then
-installs + enables the plugins (`setup_claude`).
+installs + enables the marketplace plugins (`setup_claude`).
 
-Gotchas:
+#### Why tsgo rather than typescript-language-server
+
+The official `typescript-lsp` plugin runs `typescript-language-server`, which
+loads `node_modules/typescript/lib/tsserver.js` **from the workspace**. That
+fails in two common cases: a TypeScript 7 project (the native port ships no
+`tsserver.js`) and a loose `.ts` file with no `node_modules` at all — both exit
+with *"Could not find a valid TypeScript installation"*.
+
+`tsgo` is a self-contained Go binary that reads `tsconfig.json` and the sources
+directly, so it needs no `typescript` dependency and serves TypeScript 5 and 7
+workspaces alike. Verified against all three: TS 5, TS 7, and a bare `.ts` file.
+
+It's declared by `claude/.claude/skills/tsgo-lsp/.claude-plugin/plugin.json`.
+Local plugins live under `~/.claude/skills/` — that's where `claude plugin init`
+puts them and where Claude Code discovers them as `<name>@skills-dir`. The
+directory holds no `SKILL.md`, so it contributes an LSP server and nothing else,
+and it loads without any `enabledPlugins` entry, which keeps it working on a
+machine whose `settings.json` this repo doesn't own.
+
+Only one server can own an extension — when two enabled servers both claim
+`.ts`, the first registered wins and the other never starts — so `setup_claude`
+disables `typescript-lsp` if a machine has it on. To go back to the official
+plugin: `claude plugin enable typescript-lsp@claude-plugins-official` and remove
+the `tsgo-lsp` directory.
+
+Other gotchas:
 
 - **The npm servers follow the active Node version.** They're global installs, so
   a Node major bump loses them. Re-run `./install.sh` after switching.
-- **`typescript-language-server` needs TypeScript 5.x in the workspace**, not a
-  global one — it loads `node_modules/typescript/lib/tsserver.js` from the
-  project. TypeScript 7's native port doesn't ship that file, and the server
-  exits with *"Could not find a valid TypeScript installation"*. The global
-  `typescript` install is only there so `tsc` exists on `PATH`.
 - **`jdtls` needs a JDK 21+** to run itself, independent of what a project
   compiles against. Homebrew pulls one in; on Linux `install.sh` only warns
   (sdkman is already wired into the fish config: `sdk install java`).

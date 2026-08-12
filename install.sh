@@ -83,15 +83,18 @@ install_lsp_servers() {
 
     if command -v npm &>/dev/null; then
         local npm_missing=()
-        command -v typescript-language-server &>/dev/null || npm_missing+=("typescript-language-server")
-        command -v tsc &>/dev/null || npm_missing+=("typescript")
+        # tsgo is the TypeScript server — see the tsgo-lsp plugin under
+        # claude/.claude/skills/. It's self-contained, so unlike
+        # typescript-language-server it doesn't need a `typescript` package in
+        # the workspace, and it handles both TypeScript 5 and 7 projects.
+        command -v tsgo &>/dev/null || npm_missing+=("@typescript/native-preview")
         command -v intelephense &>/dev/null || npm_missing+=("intelephense")
         if [[ ${#npm_missing[@]} -gt 0 ]]; then
             info "Installing npm language servers: ${npm_missing[*]}"
             npm install -g "${npm_missing[@]}" || warn "Could not install: ${npm_missing[*]}"
         fi
     else
-        warn "npm not available; skipping typescript-language-server + intelephense"
+        warn "npm not available; skipping tsgo + intelephense"
     fi
 
     if command -v jdtls &>/dev/null; then
@@ -452,13 +455,22 @@ setup_claude() {
         return
     fi
 
-    # The *-lsp plugins carry no binaries — they just register a language
-    # server (installed by install_lsp_servers) with Claude Code's LSP tool.
-    # `enabledPlugins` is only read from settings.json, hence the seed above.
+    # TypeScript is served by the tsgo-lsp plugin stowed into ~/.claude/skills/,
+    # which loads automatically and needs no entry here. Only the marketplace
+    # plugins do — and `enabledPlugins` is read from settings.json alone, hence
+    # the seed above. Both claim the same extensions and the first server
+    # registered wins, so typescript-lsp has to stay off.
     claude plugin marketplace add anthropics/claude-plugins-official &>/dev/null || true
     local installed
     installed="$(claude plugin list 2>/dev/null || true)"
-    for plugin in typescript-lsp php-lsp jdtls-lsp; do
+    if [[ "$(jq -r '.enabledPlugins["typescript-lsp@claude-plugins-official"] // false' "$settings")" == "true" ]]; then
+        info "Disabling typescript-lsp — tsgo-lsp serves TypeScript instead"
+        claude plugin disable typescript-lsp@claude-plugins-official --scope user &>/dev/null || true
+    fi
+
+    # The *-lsp plugins carry no binaries — they just register a language
+    # server (installed by install_lsp_servers) with Claude Code's LSP tool.
+    for plugin in php-lsp jdtls-lsp; do
         local id="${plugin}@claude-plugins-official"
         if ! grep -qF "$id" <<<"$installed"; then
             info "Installing Claude Code plugin: $plugin"
