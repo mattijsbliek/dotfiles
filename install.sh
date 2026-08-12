@@ -101,20 +101,22 @@ install_lsp_servers() {
         return
     fi
 
-    # JDT.LS runs on the JDK, independent of the JDK a project compiles against.
-    local java_major=""
-    if command -v java &>/dev/null; then
-        java_major="$(java -version 2>&1 | head -1 | sed -E 's/.*version "([0-9]+).*/\1/')"
-    fi
-    if [[ -z "$java_major" ]] || [[ "$java_major" -lt 21 ]]; then
-        warn "jdtls needs a JDK 21+ to run (found: ${java_major:-none}). Install one first"
-        warn "  (sdkman is already wired into the fish config: sdk install java)"
-    fi
-
     info "Installing jdtls (Eclipse JDT.LS)..."
     if [[ "$PLATFORM" == "macos" ]]; then
+        # The formula pulls its own JDK, so no version check is needed here.
         brew install jdtls || warn "Could not install jdtls"
     else
+        # JDT.LS runs on the JDK, independent of the JDK a project compiles
+        # against. Take the first number in the version line: that's the major
+        # for JDK 9+, and 1 (i.e. correctly < 21) for the old 1.x scheme.
+        local java_major=""
+        if command -v java &>/dev/null; then
+            java_major="$(java -version 2>&1 | head -1 | grep -oE '[0-9]+' | head -1 || true)"
+        fi
+        if [[ -z "$java_major" ]] || [[ "$java_major" -lt 21 ]]; then
+            warn "jdtls needs a JDK 21+ to run (found: ${java_major:-none})"
+            warn "  (sdkman is already wired into the fish config: sdk install java)"
+        fi
         install_jdtls_linux || true
     fi
 }
@@ -204,8 +206,16 @@ install_packages() {
             # (a name clash with an unrelated package). Symlink it back to `fd`
             # so scripts and agent instructions are identical on both platforms.
             if sudo apt install -y fd-find; then
-                mkdir -p "$HOME/.local/bin"
-                ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
+                # Don't let a missing binary abort the whole run (set -e): the
+                # symlink is a convenience, the rest of the bootstrap isn't.
+                local fdfind_bin
+                fdfind_bin="$(command -v fdfind || true)"
+                if [[ -n "$fdfind_bin" ]]; then
+                    mkdir -p "$HOME/.local/bin"
+                    ln -sf "$fdfind_bin" "$HOME/.local/bin/fd"
+                else
+                    warn "fd-find installed but no 'fdfind' on PATH; link it to ~/.local/bin/fd manually"
+                fi
             else
                 warn "fd not available in apt; install manually"
             fi
@@ -435,6 +445,33 @@ setup_secrets() {
 
 }
 
+# --- Find an enabled plugin that already serves a file extension ---
+# Only one enabled plugin can own an extension: the first registered wins and
+# the other never starts, with no warning from Claude Code (see README → Agent
+# Tooling). Prints the offending plugin id, or returns 1 if the coast is clear.
+lsp_extension_owner() {
+    local ext="$1" ours="$2" id plugin marketplace
+    while IFS= read -r id; do
+        [[ -n "$id" && "$id" != "$ours" ]] || continue
+        plugin="${id%@*}"
+        marketplace="${id#*@}"
+        # Two layouts in the wild: the official plugins declare lspServers in
+        # their marketplace entry, others ship a .lsp.json or plugin manifest
+        # inside the versioned cache dir (cache/<marketplace>/<plugin>/<ver>/).
+        if jq -e --arg p "$plugin" --arg e "$ext" \
+                '.plugins[]? | select(.name == $p) | .lspServers[]?.extensionToLanguage[$e]' \
+                "$HOME/.claude/plugins/marketplaces/$marketplace/.claude-plugin/marketplace.json" \
+                &>/dev/null \
+            || grep -qsrF --include='*.json' "\"$ext\":" \
+                "$HOME/.claude/plugins/cache/$marketplace/$plugin/"; then
+            echo "$id"
+            return 0
+        fi
+    done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value) | .key' \
+        "$HOME/.claude/settings.json" 2>/dev/null)
+    return 1
+}
+
 # --- Claude Code settings + plugins ---
 # settings.json is deliberately not stowed (see README → "Why settings.json
 # isn't stowed"), so a fresh machine has no baseline at all: no hooks, no
@@ -460,27 +497,55 @@ setup_claude() {
     # plugins do — and `enabledPlugins` is read from settings.json alone, hence
     # the seed above.
     claude plugin marketplace add anthropics/claude-plugins-official &>/dev/null || true
+
+    # `claude plugin list` prints one block per (plugin, scope) pair, so a bare
+    # id match can't tell a user-scope install from a project-scope one.
+    # Flatten to `id@@scope` lines and match those — matching the id alone lets
+    # a project-scoped plugin no-op every user-scope guard below.
     local installed
-    installed="$(claude plugin list 2>/dev/null || true)"
+    installed="$(claude plugin list 2>/dev/null | awk '
+        NF == 2 && $2 ~ /@/          { id = $2; next }
+        $1 == "Scope:" && id != ""   { print id "@@" $2 }
+    ' || true)"
 
     # typescript-lsp claims exactly the extensions tsgo-lsp does, and the first
     # server registered wins, so leaving it around would silently shadow tsgo.
     # Uninstalling drops its enabledPlugins entry too. Nothing installs it any
     # more; this only cleans up machines provisioned before the switch.
-    if grep -qF "typescript-lsp@claude-plugins-official" <<<"$installed"; then
-        info "Removing typescript-lsp — tsgo-lsp serves TypeScript instead"
-        claude plugin uninstall typescript-lsp@claude-plugins-official &>/dev/null \
-            || warn "Could not uninstall typescript-lsp"
-    fi
+    # `uninstall` defaults to user scope, so pass each scope it's present in.
+    local ts_id="typescript-lsp@claude-plugins-official" scope
+    while IFS= read -r scope; do
+        [[ -n "$scope" ]] || continue
+        info "Removing typescript-lsp ($scope scope) — tsgo-lsp serves TypeScript instead"
+        # -y: stdout is redirected, so a confirmation prompt would hang unseen.
+        claude plugin uninstall "$ts_id" --scope "$scope" -y &>/dev/null \
+            || warn "Could not uninstall typescript-lsp at $scope scope"
+    done < <(grep -F "${ts_id}@@" <<<"$installed" | sed 's|.*@@||' | sort -u)
 
     # The *-lsp plugins carry no binaries — they just register a language
     # server (installed by install_lsp_servers) with Claude Code's LSP tool.
+    local plugin id ext clash
     for plugin in php-lsp jdtls-lsp; do
-        local id="${plugin}@claude-plugins-official"
-        if ! grep -qF "$id" <<<"$installed"; then
+        id="${plugin}@claude-plugins-official"
+        if ! grep -qF "${id}@@user" <<<"$installed"; then
             info "Installing Claude Code plugin: $plugin"
             claude plugin install "$id" --scope user || warn "Could not install plugin $plugin"
         fi
+
+        # Enabling ours on top of another server for the same extension would
+        # shadow one of them silently. Which should win is a judgement call
+        # (a work marketplace may ship a cached or preconfigured variant), so
+        # report it and leave the existing one alone.
+        case "$plugin" in
+            php-lsp)   ext=".php" ;;
+            jdtls-lsp) ext=".java" ;;
+        esac
+        if clash="$(lsp_extension_owner "$ext" "$id")"; then
+            warn "$clash already serves $ext — leaving $plugin disabled"
+            warn "  (only one enabled plugin can own an extension; disable one to switch)"
+            continue
+        fi
+
         # `claude plugin enable` errors on an already-enabled plugin, so check
         # the flag it writes rather than swallowing a real failure.
         if [[ "$(jq -r --arg id "$id" '.enabledPlugins[$id] // false' "$settings")" != "true" ]]; then
