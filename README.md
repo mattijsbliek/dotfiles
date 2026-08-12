@@ -10,7 +10,7 @@ cd ~/dotfiles
 ./install.sh
 ```
 
-The bootstrap script installs dependencies (fish, neovim, stow, starship, the `gh`/`glab` CLIs, tmux, worktrunk, `fd`, `rtk`, language servers, etc.), backs up existing configs, and creates symlinks via stow.
+The bootstrap script installs dependencies (fish, neovim, stow, starship, the `gh`/`glab` CLIs, tmux, worktrunk, `fd`, `jq`/`yq`, `rtk`, language servers, etc.), backs up existing configs, and creates symlinks via stow.
 
 ## Structure
 
@@ -105,8 +105,8 @@ for local plugins — see [Agent Tooling](#agent-tooling).
 
 ## Agent Tooling
 
-Three things exist purely to make coding agents cheaper and more accurate. All
-three are installed by `install.sh` on both macOS and Linux.
+A few things exist purely to make coding agents cheaper and more accurate. All
+of them are installed by `install.sh` on both macOS and Linux.
 
 ### Language servers (LSP)
 
@@ -164,6 +164,15 @@ uninstalls it where an older machine still has it, which also clears its
 `enabledPlugins` entry. To deliberately switch back, install and enable
 `typescript-lsp@claude-plugins-official` and remove the `tsgo-lsp` directory.
 
+#### PHP and Java are enabled defensively
+
+The same one-owner-per-extension rule applies to `.php` and `.java`, and a work
+marketplace may well ship its own server for either — a cached or preconfigured
+Intelephense variant, say. Rather than pick a winner, `setup_claude` checks
+whether another *enabled* plugin already declares the extension and, if one
+does, names it and leaves our plugin disabled. Disable the other one and re-run
+`./install.sh` to switch.
+
 Other gotchas:
 
 - **The npm servers follow the active Node version.** They're global installs, so
@@ -171,6 +180,11 @@ Other gotchas:
 - **`jdtls` needs a JDK 21+** to run itself, independent of what a project
   compiles against. Homebrew pulls one in; on Linux `install.sh` only warns
   (sdkman is already wired into the fish config: `sdk install java`).
+- **jdtls is pinned to a milestone**, not the `/snapshots/` nightly it used to
+  track, so two machines provisioned weeks apart get the same server. The
+  version lives in `JDTLS_VERSION` at the top of `install.sh`; the unpacked copy
+  records what it is in `~/.local/share/jdtls/.version`, so a bumped pin
+  reinstalls instead of being skipped.
 
 ### rtk
 
@@ -188,24 +202,58 @@ Notes:
   prebuilt binary into `~/.local/bin`, which is already on `PATH` via
   `config.fish`. The hook command prepends `$HOME/.local/bin` itself and no-ops
   when `rtk` is absent, so a machine without it just runs commands unmodified.
+- **Pinned to `RTK_VERSION`** at the top of `install.sh`, installer script
+  included — the script is fetched from the release tag, not `master`, so it and
+  the binary it verifies move together. A hook with the authority to rewrite
+  every Bash command shouldn't float. `install.sh` compares the installed
+  version against the pin, so a bump upgrades an existing machine.
 - The hook is declared in this repo rather than via `rtk init -g`, which would
   patch `~/.claude/settings.json` and drop a generated `rtk-rewrite.sh` into
   `~/.claude/hooks/` — neither of which is tracked here.
 - rtk leaves destructive commands alone (`git reset --hard`, `rm -rf` produce no
-  rewrite at all) and only auto-approves ones it classifies read-only, so the
-  `protect-secrets.sh` and `dangerous-git-commands.sh` hooks still see and can
-  block the original command.
+  rewrite at all) and only auto-approves ones it classifies read-only. Even
+  where it does return `permissionDecision: "allow"`, `protect-secrets.sh` and
+  `dangerous-git-commands.sh` still see the original command and both block by
+  exiting 2 — which Claude Code honours over any hook's `allow`.
+- **Don't add `Bash(rtk:*)` to `permissions.allow`.** It looks like the obvious
+  companion to the hook, but `rtk proxy <cmd>` runs an arbitrary command
+  unfiltered, so that one entry would allow-list every Bash command there is.
+  It isn't needed: rtk pairs a rewrite with its own `allow` for anything it
+  classifies read-only, and leaves everything else to the normal permission
+  flow.
 - `rtk` is a name collision: `rtk-ai/rtk` (this one) vs `reachingforthejack/rtk`
   on crates.io. `rtk gain` only exists on the former, which is how `install.sh`
   tells them apart.
 
-### fd
+### fd, jq and yq
 
 [fd](https://github.com/sharkdp/fd) replaces `find` for filename searches and
 respects `.gitignore`, so agent searches don't drown in `node_modules`. Homebrew
 on macOS; on Linux the apt package is `fd-find` and installs the binary as
 `fdfind` (a name clash with an unrelated package), so `install.sh` symlinks
 `~/.local/bin/fd` to it — the command is `fd` on both platforms.
+
+`jq` and `yq` back the "query structured data, don't grep it" rule in
+`CLAUDE.md`, so both are core dependencies rather than optional extras — an
+agent told to reach for a tool that isn't installed just falls back to guessing
+with `grep -A`. Note that Linux gets a *different* `yq`: Homebrew ships
+[mikefarah/yq](https://github.com/mikefarah/yq) (Go), Debian/Ubuntu ship
+[kislyuk/yq](https://github.com/kislyuk/yq) (a Python jq wrapper). Ordinary path
+queries read the same on both; the advanced expression syntax doesn't.
+
+All three are allow-listed in `settings.json`. Without that, `find` ran without
+a prompt while the `fd` that replaces it needed one — which quietly pushes an
+agent back to the tool the instructions tell it to avoid.
+
+### Version pinning
+
+`rtk` and `jdtls` are downloaded from upstream rather than installed from a
+package manager, so both are pinned to a version at the top of `install.sh`.
+Neither is a package in an ecosystem Dependabot understands — one is a GitHub
+release tarball, the other an Eclipse milestone directory — so
+`.github/workflows/bump-pinned-tools.yml` polls them weekly and opens a PR when
+something newer lands. Dependabot *is* configured, for the one thing it can see
+here: that workflow's own actions.
 
 ## Claude Code Status Line
 
@@ -265,10 +313,18 @@ So `claude/.stow-local-ignore` excludes `settings.json` from stowing, and each
 machine keeps its own real (non-symlinked) copy. `claude/.claude/settings.json`
 in this repo is the shared baseline (permissions, hooks, model, output style —
 no `enabledPlugins`). `install.sh` copies it to `~/.claude/settings.json` when
-that file is absent and never touches it again, so a fresh machine gets the
-hooks and statusline; `enabledPlugins` is then filled in per machine, by
-`claude plugin enable` (which `install.sh` runs for the LSP plugins) or by
-`/plugin`. Changes to the baseline don't propagate — merge them by hand.
+that file is absent and never touches it again; `enabledPlugins` is then filled
+in per machine, by `claude plugin enable` (which `install.sh` runs for the LSP
+plugins) or by `/plugin`. Changes to the baseline don't propagate — merge them
+by hand.
+
+Be deliberate about what that seed carries. It's what makes the `protect-secrets`
+and `dangerous-git-commands` hooks run at all on a new machine, and without it
+no LSP plugin can be enabled — but the same file also sets `defaultMode: auto`,
+`skipAutoPermissionPrompt`, `skipDangerousModePermissionPrompt` and a broad Bash
+allow-list. Seeding a fresh machine therefore installs a permission posture as
+well as a safety net, on work machines included. Review the baseline before
+provisioning somewhere that warrants a stricter default.
 
 ## Platform Handling
 
@@ -276,7 +332,7 @@ macOS vs Linux differences are handled automatically:
 
 - **Fish**: `conf.d/platform.fish` detects the OS for Homebrew paths and 1Password SSH agent socket
 - **Git**: `includeIf` loads `.gitconfig.macos` or `.gitconfig.linux` for the 1Password signing program path
-- **Agent tooling**: `fd` comes from Homebrew on macOS and apt's `fd-find` (symlinked from `fdfind`) on Linux; `rtk` uses the same prebuilt-binary installer on both; `jdtls` is a Homebrew formula on macOS and an Eclipse snapshot tarball unpacked into `~/.local/share/jdtls` on Linux. See [Agent Tooling](#agent-tooling).
+- **Agent tooling**: `fd` comes from Homebrew on macOS and apt's `fd-find` (symlinked from `fdfind`) on Linux; `yq` is mikefarah's Go build on macOS and kislyuk's Python one on Linux (same basic query syntax, different advanced expressions); `rtk` uses the same pinned prebuilt-binary installer on both; `jdtls` is a Homebrew formula on macOS and a pinned Eclipse milestone tarball unpacked into `~/.local/share/jdtls` on Linux. See [Agent Tooling](#agent-tooling).
 - **Worktrunk**: `config.fish` runs `wt config shell init fish | source` only behind a `command -q wt` guard, so a freshly cloned machine doesn't error before the tool is installed. `install.sh` installs `wt` (plus `gh`/`glab`/`tmux`) cross-platform: Homebrew on macOS; on Linux, `gh` via its official apt repo, `glab` via the official `.deb` release, and `worktrunk` via `cargo install`. CLI auth (`gh auth login`, `glab auth login`) stays manual — the `issue` alias picks `gh` vs `glab` per repo from `remote_url`, not per machine.
 
 ## Secrets via 1Password

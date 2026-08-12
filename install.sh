@@ -158,7 +158,9 @@ install_packages() {
     info "Checking dependencies..."
 
     local missing=()
-    for cmd in fish nvim git stow curl jq unzip; do
+    # jq and yq back the "query structured data, don't grep it" rule in
+    # claude/.claude/CLAUDE.md, so agents can count on both being present.
+    for cmd in fish nvim git stow curl jq yq unzip; do
         if ! command -v "$cmd" &>/dev/null; then
             missing+=("$cmd")
         fi
