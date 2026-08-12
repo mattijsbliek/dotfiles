@@ -65,6 +65,10 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/dangerous-git-commands.sh"
+          },
+          {
+            "type": "command",
+            "command": "export PATH=\"$HOME/.local/bin:$PATH\"; command -v rtk >/dev/null 2>&1 && rtk hook claude || true"
           }
         ]
       }

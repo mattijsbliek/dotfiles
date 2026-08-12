@@ -50,6 +50,72 @@ install_neovim_linux() {
     info "Neovim installed: $(nvim --version | head -1)"
 }
 
+# --- Install Eclipse JDT.LS (Linux) ---
+# No apt package exists. The snapshot tarball ships a python launcher at
+# bin/jdtls, so unpacking it and symlinking that is the whole install.
+install_jdtls_linux() {
+    local dir="$HOME/.local/share/jdtls"
+    local url="https://download.eclipse.org/jdtls/snapshots/jdt-language-server-latest.tar.gz"
+
+    if ! command -v python3 &>/dev/null; then
+        warn "jdtls needs python3 for its launcher; skipping"
+        return 1
+    fi
+
+    info "Downloading Eclipse JDT.LS..."
+    rm -rf "$dir"
+    mkdir -p "$dir" "$HOME/.local/bin"
+    if ! curl -fsSL "$url" | tar -xz -C "$dir"; then
+        warn "Could not download JDT.LS; install manually from $url"
+        return 1
+    fi
+    ln -sf "$dir/bin/jdtls" "$HOME/.local/bin/jdtls"
+    info "jdtls installed to $dir"
+}
+
+# --- Language servers for Claude Code's LSP tool ---
+# Claude Code resolves each server from PATH; the *-lsp plugins only wire them
+# up (see setup_claude). TypeScript and PHP servers are npm globals, so
+# they're tied to whichever Node version is active — re-run install.sh after a
+# Node major bump.
+install_lsp_servers() {
+    info "Checking language servers..."
+
+    if command -v npm &>/dev/null; then
+        local npm_missing=()
+        command -v typescript-language-server &>/dev/null || npm_missing+=("typescript-language-server")
+        command -v tsc &>/dev/null || npm_missing+=("typescript")
+        command -v intelephense &>/dev/null || npm_missing+=("intelephense")
+        if [[ ${#npm_missing[@]} -gt 0 ]]; then
+            info "Installing npm language servers: ${npm_missing[*]}"
+            npm install -g "${npm_missing[@]}" || warn "Could not install: ${npm_missing[*]}"
+        fi
+    else
+        warn "npm not available; skipping typescript-language-server + intelephense"
+    fi
+
+    if command -v jdtls &>/dev/null; then
+        return
+    fi
+
+    # JDT.LS runs on the JDK, independent of the JDK a project compiles against.
+    local java_major=""
+    if command -v java &>/dev/null; then
+        java_major="$(java -version 2>&1 | head -1 | sed -E 's/.*version "([0-9]+).*/\1/')"
+    fi
+    if [[ -z "$java_major" ]] || [[ "$java_major" -lt 21 ]]; then
+        warn "jdtls needs a JDK 21+ to run (found: ${java_major:-none}). Install one first"
+        warn "  (sdkman is already wired into the fish config: sdk install java)"
+    fi
+
+    info "Installing jdtls (Eclipse JDT.LS)..."
+    if [[ "$PLATFORM" == "macos" ]]; then
+        brew install jdtls || warn "Could not install jdtls"
+    else
+        install_jdtls_linux || true
+    fi
+}
+
 # --- Install dependencies ---
 install_packages() {
     info "Checking dependencies..."
@@ -123,6 +189,41 @@ install_packages() {
             # eza via apt on Ubuntu 22.04+
             sudo apt install -y eza 2>/dev/null || warn "eza not available in apt; install manually"
         fi
+    fi
+
+    # fd — fast find replacement, used heavily by coding agents
+    if ! command -v fd &>/dev/null; then
+        info "Installing fd..."
+        if [[ "$PLATFORM" == "macos" ]]; then
+            brew install fd
+        else
+            # Debian/Ubuntu ship it as fd-find with the binary named `fdfind`
+            # (a name clash with an unrelated package). Symlink it back to `fd`
+            # so scripts and agent instructions are identical on both platforms.
+            if sudo apt install -y fd-find; then
+                mkdir -p "$HOME/.local/bin"
+                ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
+            else
+                warn "fd not available in apt; install manually"
+            fi
+        fi
+    fi
+
+    # rtk (Rust Token Killer) — filters verbose CLI output before it reaches the
+    # model. Wired into Claude Code as a PreToolUse hook (see claude/.claude/settings.json).
+    # Not in Homebrew or apt; the upstream installer drops a prebuilt binary in
+    # ~/.local/bin on both platforms.
+    if ! command -v rtk &>/dev/null; then
+        info "Installing rtk..."
+        mkdir -p "$HOME/.local/bin"
+        curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh \
+            || warn "Could not install rtk; see https://github.com/rtk-ai/rtk"
+    fi
+    # `rtk gain` distinguishes rtk-ai/rtk (what we want) from the unrelated
+    # reachingforthejack/rtk, which squats the same binary name on crates.io.
+    if command -v rtk &>/dev/null && ! rtk gain &>/dev/null; then
+        warn "'rtk' on PATH is not rtk-ai/rtk (no 'rtk gain'). Remove it and re-run:"
+        warn "  cargo uninstall rtk"
     fi
 
     # pngpaste — clipboard image access for `m paste-image` (macOS only)
@@ -331,6 +432,47 @@ setup_secrets() {
 
 }
 
+# --- Claude Code settings + plugins ---
+# settings.json is deliberately not stowed (see README → "Why settings.json
+# isn't stowed"), so a fresh machine has no baseline at all: no hooks, no
+# statusline, no LSP tool. Seed it once from the repo, then let the machine
+# own it.
+setup_claude() {
+    local settings="$HOME/.claude/settings.json"
+    if [[ -f "$settings" ]]; then
+        info "~/.claude/settings.json exists — leaving it alone."
+    else
+        info "Seeding ~/.claude/settings.json from the repo baseline..."
+        mkdir -p "$HOME/.claude"
+        cp "$DOTFILES_DIR/claude/.claude/settings.json" "$settings"
+    fi
+
+    if ! command -v claude &>/dev/null; then
+        warn "claude CLI not found; skipping LSP plugin setup"
+        return
+    fi
+
+    # The *-lsp plugins carry no binaries — they just register a language
+    # server (installed by install_lsp_servers) with Claude Code's LSP tool.
+    # `enabledPlugins` is only read from settings.json, hence the seed above.
+    claude plugin marketplace add anthropics/claude-plugins-official &>/dev/null || true
+    local installed
+    installed="$(claude plugin list 2>/dev/null || true)"
+    for plugin in typescript-lsp php-lsp jdtls-lsp; do
+        local id="${plugin}@claude-plugins-official"
+        if ! grep -qF "$id" <<<"$installed"; then
+            info "Installing Claude Code plugin: $plugin"
+            claude plugin install "$id" --scope user || warn "Could not install plugin $plugin"
+        fi
+        # `claude plugin enable` errors on an already-enabled plugin, so check
+        # the flag it writes rather than swallowing a real failure.
+        if [[ "$(jq -r --arg id "$id" '.enabledPlugins[$id] // false' "$settings")" != "true" ]]; then
+            claude plugin enable "$id" --scope user &>/dev/null \
+                || warn "Could not enable plugin $plugin"
+        fi
+    done
+}
+
 # --- Fish plugins ---
 setup_fish_plugins() {
     if ! command -v fish &>/dev/null; then
@@ -363,11 +505,15 @@ main() {
 
     install_packages
     echo ""
+    install_lsp_servers
+    echo ""
     backup_conflicts "${PACKAGES[@]}"
     echo ""
     stow_packages
     echo ""
     setup_secrets
+    echo ""
+    setup_claude
     echo ""
     setup_fish_plugins
 

@@ -16,6 +16,20 @@ Turn tasks into verifiable goals ("fix the bug" → reproduce with a failing tes
 pass). For multi-step work, state the plan up front with a verify step per item. Scale this to
 the task — a typo fix needs no plan.
 
+## Finding code
+**LSP first** on any file type with a server running — `workspaceSymbol` and `goToDefinition`
+are exact and cheap, while reading files to locate a symbol is a guess. Servers are installed
+for TypeScript/JavaScript, PHP and Java; everything else (YAML, JSON, Bash, SQL, Markdown) has
+none, so don't try. If LSP reports no server configured, fall back to grep instead of retrying.
+
+Before renaming a symbol or changing a signature, `findReferences` for the call sites. After
+editing, check LSP diagnostics and fix type errors and missing imports before moving on.
+
+Query structured data, don't grep it: `jq` for JSON, `yq` for YAML. A `grep -A/-B` window on a
+nested file is a guess that over- and under-fetches. Grep stays right for free text — comments,
+strings, log lines. For filenames use `fd`, not `find`: it honours `.gitignore`, so it won't
+bury the answer in `node_modules`.
+
 ## Writing code
 Minimum code that solves the problem. No speculative features, no abstractions for single-use
 code, no unrequested flexibility, no error handling for impossible scenarios. If 200 lines could
@@ -67,3 +81,5 @@ Never invent a ticket id. If a ticket-id convention applies on this machine, a r
 Pick the CLI from the remote — `git remote get-url origin`:
 - **GitLab** (`gitlab.com` or self-hosted) → `glab`
 - **GitHub** (`github.com`) → `gh`
+
+@RTK.md
