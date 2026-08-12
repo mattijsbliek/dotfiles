@@ -154,8 +154,14 @@ The conflict degrades silently and misleadingly. With both plugins enabled,
 `typescript-language-server` wins and `tsgo` never starts, so TypeScript 7 and
 dependency-free projects go back to failing with *"Could not find a valid
 TypeScript installation"* — a message that points at the workspace rather than
-at the plugin that actually caused it. So `setup_claude` disables
-`typescript-lsp` if a machine has it on. To deliberately switch back: enable
+at the plugin that actually caused it.
+
+`tsgo-lsp` therefore replaces `typescript-lsp` outright rather than sitting
+alongside it disabled: the two declare an identical extension set
+(`.ts .tsx .js .jsx .mts .cts .mjs .cjs`, all verified working under tsgo), so
+there's nothing the official plugin covers that tsgo doesn't. `setup_claude`
+uninstalls it where an older machine still has it, which also clears its
+`enabledPlugins` entry. To deliberately switch back, install and enable
 `typescript-lsp@claude-plugins-official` and remove the `tsgo-lsp` directory.
 
 Other gotchas:

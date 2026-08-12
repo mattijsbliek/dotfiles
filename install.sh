@@ -458,14 +458,19 @@ setup_claude() {
     # TypeScript is served by the tsgo-lsp plugin stowed into ~/.claude/skills/,
     # which loads automatically and needs no entry here. Only the marketplace
     # plugins do — and `enabledPlugins` is read from settings.json alone, hence
-    # the seed above. Both claim the same extensions and the first server
-    # registered wins, so typescript-lsp has to stay off.
+    # the seed above.
     claude plugin marketplace add anthropics/claude-plugins-official &>/dev/null || true
     local installed
     installed="$(claude plugin list 2>/dev/null || true)"
-    if [[ "$(jq -r '.enabledPlugins["typescript-lsp@claude-plugins-official"] // false' "$settings")" == "true" ]]; then
-        info "Disabling typescript-lsp — tsgo-lsp serves TypeScript instead"
-        claude plugin disable typescript-lsp@claude-plugins-official --scope user &>/dev/null || true
+
+    # typescript-lsp claims exactly the extensions tsgo-lsp does, and the first
+    # server registered wins, so leaving it around would silently shadow tsgo.
+    # Uninstalling drops its enabledPlugins entry too. Nothing installs it any
+    # more; this only cleans up machines provisioned before the switch.
+    if grep -qF "typescript-lsp@claude-plugins-official" <<<"$installed"; then
+        info "Removing typescript-lsp — tsgo-lsp serves TypeScript instead"
+        claude plugin uninstall typescript-lsp@claude-plugins-official &>/dev/null \
+            || warn "Could not uninstall typescript-lsp"
     fi
 
     # The *-lsp plugins carry no binaries — they just register a language
