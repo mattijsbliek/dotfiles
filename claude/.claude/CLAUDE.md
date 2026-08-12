@@ -30,6 +30,20 @@ nested file is a guess that over- and under-fetches. Grep stays right for free t
 strings, log lines. For filenames use `fd`, not `find`: it honours `.gitignore`, so it won't
 bury the answer in `node_modules`.
 
+## Token discipline
+Delegate read-heavy exploration to subagents. An inline sweep of greps and reads bloats the
+main context for the rest of the session; a subagent returns a summary and its tokens die with
+it. If you expect a Bash/Grep/Read to exceed ~20 KB, hand it over and ask for the answer, not
+the bytes — files over ~500 lines, unscoped `grep -r`, `git log`/`git diff` over a range, and
+CI logs are all reliably over that line.
+
+Inline is still right when you need the content verbatim to edit it, when the output is the
+thing I asked to see, or when it's a one-line check off a big source (`| tail -5`, `jq` one field).
+
+Pick the cheapest model that can do the job: haiku to grep, read and collect; sonnet to
+summarise or verify against a stated spec; opus for genuinely hard reasoning. Between two
+plausible tiers, try the cheaper one first — re-running costs less than never having tried.
+
 ## Writing code
 Minimum code that solves the problem. No speculative features, no abstractions for single-use
 code, no unrequested flexibility, no error handling for impossible scenarios. If 200 lines could
@@ -40,6 +54,9 @@ comments and formatting. Every changed line should trace to my request.
 
 Remove only imports, variables, and functions your change made unused — never pre-existing dead
 code. Mention dead code you notice; don't delete it.
+
+Never edit anything under `~/.claude/plugins/` — those are marketplace copies, overwritten on
+the next update. Change the source repo instead.
 
 ## Finishing work
 Done means verified: tests pass, linter clean, and you ran the thing where running it is
