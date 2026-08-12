@@ -143,11 +143,20 @@ directory holds no `SKILL.md`, so it contributes an LSP server and nothing else,
 and it loads without any `enabledPlugins` entry, which keeps it working on a
 machine whose `settings.json` this repo doesn't own.
 
-Only one server can own an extension — when two enabled servers both claim
-`.ts`, the first registered wins and the other never starts — so `setup_claude`
-disables `typescript-lsp` if a machine has it on. To go back to the official
-plugin: `claude plugin enable typescript-lsp@claude-plugins-official` and remove
-the `tsgo-lsp` directory.
+Within a session only one *enabled plugin* can own a given extension: if two
+both declare `.ts`, the first registered wins and the other never starts. This
+is a config conflict, not a concurrency limit — sessions don't compete. Each
+Claude Code session spawns its own server process, so parallel sessions and
+worktrees are unaffected (verified: two concurrent sessions, two `tsgo`
+processes, correct results in both).
+
+The conflict degrades silently and misleadingly. With both plugins enabled,
+`typescript-language-server` wins and `tsgo` never starts, so TypeScript 7 and
+dependency-free projects go back to failing with *"Could not find a valid
+TypeScript installation"* — a message that points at the workspace rather than
+at the plugin that actually caused it. So `setup_claude` disables
+`typescript-lsp` if a machine has it on. To deliberately switch back: enable
+`typescript-lsp@claude-plugins-official` and remove the `tsgo-lsp` directory.
 
 Other gotchas:
 
