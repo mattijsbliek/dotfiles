@@ -4,6 +4,14 @@ set -euo pipefail
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_DIR="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
 
+# --- Pinned tool versions ---
+# Neither tool lives in an ecosystem Dependabot understands, so these are
+# bumped by .github/workflows/bump-pinned-tools.yml, which opens a PR when a
+# newer version appears upstream. Keep the assignments on one line each — the
+# workflow rewrites them with sed.
+RTK_VERSION="v0.45.0"
+JDTLS_VERSION="1.60.0"
+
 # --- Colors ---
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -50,12 +58,109 @@ install_neovim_linux() {
     info "Neovim installed: $(nvim --version | head -1)"
 }
 
+# --- Install Eclipse JDT.LS (Linux) ---
+# No apt package exists. The tarball ships a python launcher at bin/jdtls, so
+# unpacking it and symlinking that is the whole install. Take a pinned
+# milestone rather than /snapshots/, which serves nightlies — two machines
+# provisioned a week apart would otherwise get different servers.
+install_jdtls_linux() {
+    local dir="$HOME/.local/share/jdtls"
+    local base="https://download.eclipse.org/jdtls/milestones/$JDTLS_VERSION"
+
+    if ! command -v python3 &>/dev/null; then
+        warn "jdtls needs python3 for its launcher; skipping"
+        return 1
+    fi
+
+    # A milestone directory is immutable and names its tarball in latest.txt.
+    local tarball
+    tarball="$(curl -fsSL "$base/latest.txt" 2>/dev/null)" || true
+    if [[ -z "$tarball" ]]; then
+        warn "Could not resolve the JDT.LS $JDTLS_VERSION tarball; see $base/"
+        return 1
+    fi
+
+    # Unpack to a staging dir and swap it in only on success, so a failed
+    # download leaves any working install untouched.
+    info "Downloading Eclipse JDT.LS $JDTLS_VERSION..."
+    local staging="$dir.incoming"
+    rm -rf "$staging"
+    mkdir -p "$staging" "$HOME/.local/bin"
+    if ! curl -fsSL "$base/$tarball" | tar -xz -C "$staging"; then
+        warn "Could not download JDT.LS; install manually from $base/$tarball"
+        rm -rf "$staging"
+        return 1
+    fi
+    rm -rf "$dir"
+    mv "$staging" "$dir"
+    echo "$JDTLS_VERSION" >"$dir/.version"
+    ln -sf "$dir/bin/jdtls" "$HOME/.local/bin/jdtls"
+    info "jdtls $JDTLS_VERSION installed to $dir"
+}
+
+# --- Language servers for Claude Code's LSP tool ---
+# Claude Code resolves each server from PATH; the *-lsp plugins only wire them
+# up (see setup_claude). TypeScript and PHP servers are npm globals, so
+# they're tied to whichever Node version is active — re-run install.sh after a
+# Node major bump.
+install_lsp_servers() {
+    info "Checking language servers..."
+
+    if command -v npm &>/dev/null; then
+        local npm_missing=()
+        # tsgo is the TypeScript server — see the tsgo-lsp plugin under
+        # claude/.claude/skills/. It's self-contained, so unlike
+        # typescript-language-server it doesn't need a `typescript` package in
+        # the workspace, and it handles both TypeScript 5 and 7 projects.
+        command -v tsgo &>/dev/null || npm_missing+=("@typescript/native-preview")
+        command -v intelephense &>/dev/null || npm_missing+=("intelephense")
+        if [[ ${#npm_missing[@]} -gt 0 ]]; then
+            info "Installing npm language servers: ${npm_missing[*]}"
+            npm install -g "${npm_missing[@]}" || warn "Could not install: ${npm_missing[*]}"
+        fi
+    else
+        warn "npm not available; skipping tsgo + intelephense"
+    fi
+
+    if command -v jdtls &>/dev/null; then
+        # Same idea as rtk: reinstall when the pin moves. Only on Linux, where
+        # install.sh unpacks the tarball itself and stamps the version; the
+        # macOS copy is brew's to upgrade.
+        if [[ "$PLATFORM" == "macos" ]] ||
+            [[ "$(cat "$HOME/.local/share/jdtls/.version" 2>/dev/null)" == "$JDTLS_VERSION" ]]; then
+            return
+        fi
+        info "jdtls pin moved to $JDTLS_VERSION; reinstalling"
+    fi
+
+    info "Installing jdtls (Eclipse JDT.LS)..."
+    if [[ "$PLATFORM" == "macos" ]]; then
+        # The formula pulls its own JDK, so no version check is needed here.
+        brew install jdtls || warn "Could not install jdtls"
+    else
+        # JDT.LS runs on the JDK, independent of the JDK a project compiles
+        # against. Take the first number in the version line: that's the major
+        # for JDK 9+, and 1 (i.e. correctly < 21) for the old 1.x scheme.
+        local java_major=""
+        if command -v java &>/dev/null; then
+            java_major="$(java -version 2>&1 | head -1 | grep -oE '[0-9]+' | head -1 || true)"
+        fi
+        if [[ -z "$java_major" ]] || [[ "$java_major" -lt 21 ]]; then
+            warn "jdtls needs a JDK 21+ to run (found: ${java_major:-none})"
+            warn "  (sdkman is already wired into the fish config: sdk install java)"
+        fi
+        install_jdtls_linux || true
+    fi
+}
+
 # --- Install dependencies ---
 install_packages() {
     info "Checking dependencies..."
 
     local missing=()
-    for cmd in fish nvim git stow curl jq unzip; do
+    # jq and yq back the "query structured data, don't grep it" rule in
+    # claude/.claude/CLAUDE.md, so agents can count on both being present.
+    for cmd in fish nvim git stow curl jq yq unzip; do
         if ! command -v "$cmd" &>/dev/null; then
             missing+=("$cmd")
         fi
@@ -123,6 +228,59 @@ install_packages() {
             # eza via apt on Ubuntu 22.04+
             sudo apt install -y eza 2>/dev/null || warn "eza not available in apt; install manually"
         fi
+    fi
+
+    # fd — fast find replacement, used heavily by coding agents
+    if ! command -v fd &>/dev/null; then
+        info "Installing fd..."
+        if [[ "$PLATFORM" == "macos" ]]; then
+            brew install fd
+        else
+            # Debian/Ubuntu ship it as fd-find with the binary named `fdfind`
+            # (a name clash with an unrelated package). Symlink it back to `fd`
+            # so scripts and agent instructions are identical on both platforms.
+            if sudo apt install -y fd-find; then
+                # Don't let a missing binary abort the whole run (set -e): the
+                # symlink is a convenience, the rest of the bootstrap isn't.
+                local fdfind_bin
+                fdfind_bin="$(command -v fdfind || true)"
+                if [[ -n "$fdfind_bin" ]]; then
+                    mkdir -p "$HOME/.local/bin"
+                    ln -sf "$fdfind_bin" "$HOME/.local/bin/fd"
+                else
+                    warn "fd-find installed but no 'fdfind' on PATH; link it to ~/.local/bin/fd manually"
+                fi
+            else
+                warn "fd not available in apt; install manually"
+            fi
+        fi
+    fi
+
+    # rtk (Rust Token Killer) — filters verbose CLI output before it reaches the
+    # model. Wired into Claude Code as a PreToolUse hook (see claude/.claude/settings.json).
+    # Not in Homebrew or apt; the upstream installer drops a prebuilt binary in
+    # ~/.local/bin on both platforms and verifies it against the release
+    # checksums. Fetch that script from the release tag rather than master, so
+    # the installer and the binary it installs are pinned together — this hook
+    # gets to rewrite every Bash command, so it shouldn't float.
+    # Compare against the pin rather than just testing for presence, so a
+    # version bump reaches machines that already have rtk, not only fresh ones.
+    local rtk_have=""
+    if command -v rtk &>/dev/null; then
+        rtk_have="v$(rtk --version 2>/dev/null | awk '{print $2}' || true)"
+    fi
+    if [[ "$rtk_have" != "$RTK_VERSION" ]]; then
+        info "Installing rtk $RTK_VERSION${rtk_have:+ (replacing $rtk_have)}..."
+        mkdir -p "$HOME/.local/bin"
+        curl -fsSL "https://raw.githubusercontent.com/rtk-ai/rtk/$RTK_VERSION/install.sh" \
+            | RTK_VERSION="$RTK_VERSION" sh \
+            || warn "Could not install rtk; see https://github.com/rtk-ai/rtk"
+    fi
+    # `rtk gain` distinguishes rtk-ai/rtk (what we want) from the unrelated
+    # reachingforthejack/rtk, which squats the same binary name on crates.io.
+    if command -v rtk &>/dev/null && ! rtk gain &>/dev/null; then
+        warn "'rtk' on PATH is not rtk-ai/rtk (no 'rtk gain'). Remove it and re-run:"
+        warn "  cargo uninstall rtk"
     fi
 
     # pngpaste — clipboard image access for `m paste-image` (macOS only)
@@ -331,6 +489,130 @@ setup_secrets() {
 
 }
 
+# --- Find an enabled plugin that already serves a file extension ---
+# Only one enabled plugin can own an extension: the first registered wins and
+# the other never starts, with no warning from Claude Code (see README → Agent
+# Tooling). Prints the offending plugin id, or returns 1 if the coast is clear.
+lsp_extension_owner() {
+    local ext="$1" ours="$2" id plugin marketplace manifest
+    while IFS= read -r id; do
+        [[ -n "$id" && "$id" != "$ours" ]] || continue
+        plugin="${id%@*}"
+        marketplace="${id#*@}"
+        # Two layouts in the wild: the official plugins declare lspServers in
+        # their marketplace entry, others ship a .lsp.json or plugin manifest
+        # inside the versioned cache dir (cache/<marketplace>/<plugin>/<ver>/).
+        if jq -e --arg p "$plugin" --arg e "$ext" \
+                '.plugins[]? | select(.name == $p) | .lspServers[]?.extensionToLanguage[$e]' \
+                "$HOME/.claude/plugins/marketplaces/$marketplace/.claude-plugin/marketplace.json" \
+                &>/dev/null \
+            || grep -qsrF --include='*.json' "\"$ext\":" \
+                "$HOME/.claude/plugins/cache/$marketplace/$plugin/"; then
+            echo "$id"
+            return 0
+        fi
+    done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value) | .key' \
+        "$HOME/.claude/settings.json" 2>/dev/null)
+
+    # Local plugins under ~/.claude/skills/ are enabled by their presence alone
+    # and never appear in enabledPlugins — tsgo-lsp is one — so the loop above
+    # is blind to them. They shadow just as silently, so check them too.
+    for manifest in "$HOME"/.claude/skills/*/.claude-plugin/plugin.json; do
+        [[ -f "$manifest" ]] || continue
+        id="$(jq -r '.name // empty' "$manifest" 2>/dev/null)@skills-dir"
+        [[ "$id" != "@skills-dir" && "$id" != "$ours" ]] || continue
+        if jq -e --arg e "$ext" '.lspServers[]?.extensionToLanguage[$e]' \
+                "$manifest" &>/dev/null; then
+            echo "$id"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# --- Claude Code settings + plugins ---
+# settings.json is deliberately not stowed (see README → "Why settings.json
+# isn't stowed"), so a fresh machine has no baseline at all: no hooks, no
+# statusline, no LSP tool. Seed it once from the repo, then let the machine
+# own it.
+setup_claude() {
+    local settings="$HOME/.claude/settings.json"
+    if [[ -f "$settings" ]]; then
+        info "~/.claude/settings.json exists — leaving it alone."
+    else
+        info "Seeding ~/.claude/settings.json from the repo baseline..."
+        mkdir -p "$HOME/.claude"
+        cp "$DOTFILES_DIR/claude/.claude/settings.json" "$settings"
+    fi
+
+    if ! command -v claude &>/dev/null; then
+        warn "claude CLI not found; skipping LSP plugin setup"
+        return
+    fi
+
+    # TypeScript is served by the tsgo-lsp plugin stowed into ~/.claude/skills/,
+    # which loads automatically and needs no entry here. Only the marketplace
+    # plugins do — and `enabledPlugins` is read from settings.json alone, hence
+    # the seed above.
+    claude plugin marketplace add anthropics/claude-plugins-official &>/dev/null || true
+
+    # `claude plugin list` prints one block per (plugin, scope) pair, so a bare
+    # id match can't tell a user-scope install from a project-scope one.
+    # Flatten to `id@@scope` lines and match those — matching the id alone lets
+    # a project-scoped plugin no-op every user-scope guard below.
+    local installed
+    installed="$(claude plugin list 2>/dev/null | awk '
+        NF == 2 && $2 ~ /@/          { id = $2; next }
+        $1 == "Scope:" && id != ""   { print id "@@" $2 }
+    ' || true)"
+
+    # typescript-lsp claims exactly the extensions tsgo-lsp does, and the first
+    # server registered wins, so leaving it around would silently shadow tsgo.
+    # Uninstalling drops its enabledPlugins entry too. Nothing installs it any
+    # more; this only cleans up machines provisioned before the switch.
+    # `uninstall` defaults to user scope, so pass each scope it's present in.
+    local ts_id="typescript-lsp@claude-plugins-official" scope
+    while IFS= read -r scope; do
+        [[ -n "$scope" ]] || continue
+        info "Removing typescript-lsp ($scope scope) — tsgo-lsp serves TypeScript instead"
+        # -y: stdout is redirected, so a confirmation prompt would hang unseen.
+        claude plugin uninstall "$ts_id" --scope "$scope" -y &>/dev/null \
+            || warn "Could not uninstall typescript-lsp at $scope scope"
+    done < <(grep -F "${ts_id}@@" <<<"$installed" | sed 's|.*@@||' | sort -u)
+
+    # The *-lsp plugins carry no binaries — they just register a language
+    # server (installed by install_lsp_servers) with Claude Code's LSP tool.
+    local plugin id ext clash
+    for plugin in php-lsp jdtls-lsp; do
+        id="${plugin}@claude-plugins-official"
+        if ! grep -qF "${id}@@user" <<<"$installed"; then
+            info "Installing Claude Code plugin: $plugin"
+            claude plugin install "$id" --scope user || warn "Could not install plugin $plugin"
+        fi
+
+        # Enabling ours on top of another server for the same extension would
+        # shadow one of them silently. Which should win is a judgement call
+        # (a work marketplace may ship a cached or preconfigured variant), so
+        # report it and leave the existing one alone.
+        case "$plugin" in
+            php-lsp)   ext=".php" ;;
+            jdtls-lsp) ext=".java" ;;
+        esac
+        if clash="$(lsp_extension_owner "$ext" "$id")"; then
+            warn "$clash already serves $ext — leaving $plugin disabled"
+            warn "  (only one enabled plugin can own an extension; disable one to switch)"
+            continue
+        fi
+
+        # `claude plugin enable` errors on an already-enabled plugin, so check
+        # the flag it writes rather than swallowing a real failure.
+        if [[ "$(jq -r --arg id "$id" '.enabledPlugins[$id] // false' "$settings")" != "true" ]]; then
+            claude plugin enable "$id" --scope user &>/dev/null \
+                || warn "Could not enable plugin $plugin"
+        fi
+    done
+}
+
 # --- Fish plugins ---
 setup_fish_plugins() {
     if ! command -v fish &>/dev/null; then
@@ -363,11 +645,15 @@ main() {
 
     install_packages
     echo ""
+    install_lsp_servers
+    echo ""
     backup_conflicts "${PACKAGES[@]}"
     echo ""
     stow_packages
     echo ""
     setup_secrets
+    echo ""
+    setup_claude
     echo ""
     setup_fish_plugins
 

@@ -1,0 +1,12 @@
+version: 2
+
+# Dependabot can't see the tools install.sh downloads (RTK_VERSION,
+# JDTLS_VERSION) — it only reads manifests for ecosystems it supports, and a
+# version string in a shell script isn't one. Those are handled by
+# .github/workflows/bump-pinned-tools.yml. What it can keep current is the
+# third-party actions that workflow depends on.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

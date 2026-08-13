@@ -10,7 +10,7 @@ cd ~/dotfiles
 ./install.sh
 ```
 
-The bootstrap script installs dependencies (fish, neovim, stow, starship, the `gh`/`glab` CLIs, tmux, worktrunk, etc.), backs up existing configs, and creates symlinks via stow.
+The bootstrap script installs dependencies (fish, neovim, stow, starship, the `gh`/`glab` CLIs, tmux, worktrunk, `fd`, `jq`/`yq`, `rtk`, language servers, etc.), backs up existing configs, and creates symlinks via stow.
 
 ## Structure
 
@@ -99,6 +99,167 @@ since that CLI deletes and recreates its managed directories on every update and
 can't coexist with a symlink into this repo. See `claude/.claude/skills/VENDORED.md`
 for each vendored skill's upstream source, to pull updates manually.
 
+One directory there isn't a skill: `tsgo-lsp/` is a local Claude Code *plugin*
+declaring a language server. `~/.claude/skills/` doubles as the discovery path
+for local plugins — see [Agent Tooling](#agent-tooling).
+
+## Agent Tooling
+
+A few things exist purely to make coding agents cheaper and more accurate. All
+of them are installed by `install.sh` on both macOS and Linux.
+
+### Language servers (LSP)
+
+`ENABLE_LSP_TOOL=1` in `claude/.claude/settings.json` gives Claude an LSP tool —
+`hover`, `goToDefinition`, `findReferences` — which is exact and cheap compared
+to grepping for a symbol. Two halves have to line up:
+
+| Language | Server binary | Installed by | Claude Code plugin |
+|----------|---------------|--------------|--------------------|
+| TypeScript/JavaScript | `tsgo` (`@typescript/native-preview`) | `npm -g` | `tsgo-lsp@skills-dir` (local, in this repo) |
+| PHP | `intelephense` | `npm -g` | `php-lsp@claude-plugins-official` |
+| Java | `jdtls` | brew (macOS) / Eclipse tarball into `~/.local/share/jdtls` (Linux) | `jdtls-lsp@claude-plugins-official` |
+
+The plugins carry no binaries — they only register a server that must already be
+on `PATH`. `install.sh` installs the binaries (`install_lsp_servers`) and then
+installs + enables the marketplace plugins (`setup_claude`).
+
+#### Why tsgo rather than typescript-language-server
+
+The official `typescript-lsp` plugin runs `typescript-language-server`, which
+loads `node_modules/typescript/lib/tsserver.js` **from the workspace**. That
+fails in two common cases: a TypeScript 7 project (the native port ships no
+`tsserver.js`) and a loose `.ts` file with no `node_modules` at all — both exit
+with *"Could not find a valid TypeScript installation"*.
+
+`tsgo` is a self-contained Go binary that reads `tsconfig.json` and the sources
+directly, so it needs no `typescript` dependency and serves TypeScript 5 and 7
+workspaces alike. Verified against all three: TS 5, TS 7, and a bare `.ts` file.
+
+It's declared by `claude/.claude/skills/tsgo-lsp/.claude-plugin/plugin.json`.
+Local plugins live under `~/.claude/skills/` — that's where `claude plugin init`
+puts them and where Claude Code discovers them as `<name>@skills-dir`. The
+directory holds no `SKILL.md`, so it contributes an LSP server and nothing else,
+and it loads without any `enabledPlugins` entry, which keeps it working on a
+machine whose `settings.json` this repo doesn't own.
+
+Within a session only one *enabled plugin* can own a given extension: if two
+both declare `.ts`, the first registered wins and the other never starts. This
+is a config conflict, not a concurrency limit — sessions don't compete. Each
+Claude Code session spawns its own server process, so parallel sessions and
+worktrees are unaffected (verified: two concurrent sessions, two `tsgo`
+processes, correct results in both).
+
+The conflict degrades silently and misleadingly. With both plugins enabled,
+`typescript-language-server` wins and `tsgo` never starts, so TypeScript 7 and
+dependency-free projects go back to failing with *"Could not find a valid
+TypeScript installation"* — a message that points at the workspace rather than
+at the plugin that actually caused it.
+
+`tsgo-lsp` therefore replaces `typescript-lsp` outright rather than sitting
+alongside it disabled: the two declare an identical extension set
+(`.ts .tsx .js .jsx .mts .cts .mjs .cjs`, all verified working under tsgo), so
+there's nothing the official plugin covers that tsgo doesn't. `setup_claude`
+uninstalls it where an older machine still has it, which also clears its
+`enabledPlugins` entry. To deliberately switch back, install and enable
+`typescript-lsp@claude-plugins-official` and remove the `tsgo-lsp` directory.
+
+#### PHP and Java are enabled defensively
+
+The same one-owner-per-extension rule applies to `.php` and `.java`, and a work
+marketplace may well ship its own server for either — a cached or preconfigured
+Intelephense variant, say. Rather than pick a winner, `setup_claude` checks
+whether another plugin already declares the extension and, if one does, names it
+and leaves our plugin disabled. Both kinds count: marketplace plugins listed in
+`enabledPlugins`, and local `~/.claude/skills/` plugins, which are enabled by
+their presence alone and so never appear there. Disable the other one and re-run
+`./install.sh` to switch.
+
+Other gotchas:
+
+- **The npm servers follow the active Node version.** They're global installs, so
+  a Node major bump loses them. Re-run `./install.sh` after switching.
+- **`jdtls` needs a JDK 21+** to run itself, independent of what a project
+  compiles against. Homebrew pulls one in; on Linux `install.sh` only warns
+  (sdkman is already wired into the fish config: `sdk install java`).
+- **jdtls is pinned to a milestone on Linux**, not the `/snapshots/` nightly it
+  used to track, so two Linux machines provisioned weeks apart get the same
+  server. The version lives in `JDTLS_VERSION` at the top of `install.sh`; the
+  unpacked copy records what it is in `~/.local/share/jdtls/.version`, so a
+  bumped pin reinstalls instead of being skipped. The pin does **not** reach
+  macOS — there jdtls is a Homebrew formula, so `brew` decides the version and a
+  `JDTLS_VERSION` bump changes nothing. macOS and Linux can therefore run
+  different servers; `brew upgrade jdtls` is the macOS half.
+
+### rtk
+
+[rtk](https://github.com/rtk-ai/rtk) filters verbose CLI output before it reaches
+the model. It's wired in as a `PreToolUse` hook on `Bash` in
+`claude/.claude/settings.json`, so `git status` silently becomes `rtk git status`.
+`claude/.claude/RTK.md` is stowed to `~/.claude/RTK.md` and pulled into context by
+an `@RTK.md` reference at the end of `CLAUDE.md` — it documents the meta commands
+and the two cases where the rewrite bites (JSON piped to `jq`, multi-line Bash
+blocks).
+
+Notes:
+
+- Not in Homebrew or apt on either platform; the upstream installer drops a
+  prebuilt binary into `~/.local/bin`, which is already on `PATH` via
+  `config.fish`. The hook command prepends `$HOME/.local/bin` itself and no-ops
+  when `rtk` is absent, so a machine without it just runs commands unmodified.
+- **Pinned to `RTK_VERSION`** at the top of `install.sh`, installer script
+  included — the script is fetched from the release tag, not `master`, so it and
+  the binary it verifies move together. A hook with the authority to rewrite
+  every Bash command shouldn't float. `install.sh` compares the installed
+  version against the pin, so a bump upgrades an existing machine.
+- The hook is declared in this repo rather than via `rtk init -g`, which would
+  patch `~/.claude/settings.json` and drop a generated `rtk-rewrite.sh` into
+  `~/.claude/hooks/` — neither of which is tracked here.
+- rtk leaves destructive commands alone (`git reset --hard`, `rm -rf` produce no
+  rewrite at all) and only auto-approves ones it classifies read-only. Even
+  where it does return `permissionDecision: "allow"`, `protect-secrets.sh` and
+  `dangerous-git-commands.sh` still see the original command and both block by
+  exiting 2 — which Claude Code honours over any hook's `allow`.
+- **Don't add `Bash(rtk:*)` to `permissions.allow`.** It looks like the obvious
+  companion to the hook, but `rtk proxy <cmd>` runs an arbitrary command
+  unfiltered, so that one entry would allow-list every Bash command there is.
+  It isn't needed: rtk pairs a rewrite with its own `allow` for anything it
+  classifies read-only, and leaves everything else to the normal permission
+  flow.
+- `rtk` is a name collision: `rtk-ai/rtk` (this one) vs `reachingforthejack/rtk`
+  on crates.io. `rtk gain` only exists on the former, which is how `install.sh`
+  tells them apart.
+
+### fd, jq and yq
+
+[fd](https://github.com/sharkdp/fd) replaces `find` for filename searches and
+respects `.gitignore`, so agent searches don't drown in `node_modules`. Homebrew
+on macOS; on Linux the apt package is `fd-find` and installs the binary as
+`fdfind` (a name clash with an unrelated package), so `install.sh` symlinks
+`~/.local/bin/fd` to it — the command is `fd` on both platforms.
+
+`jq` and `yq` back the "query structured data, don't grep it" rule in
+`CLAUDE.md`, so both are core dependencies rather than optional extras — an
+agent told to reach for a tool that isn't installed just falls back to guessing
+with `grep -A`. Note that Linux gets a *different* `yq`: Homebrew ships
+[mikefarah/yq](https://github.com/mikefarah/yq) (Go), Debian/Ubuntu ship
+[kislyuk/yq](https://github.com/kislyuk/yq) (a Python jq wrapper). Ordinary path
+queries read the same on both; the advanced expression syntax doesn't.
+
+All three are allow-listed in `settings.json`. Without that, `find` ran without
+a prompt while the `fd` that replaces it needed one — which quietly pushes an
+agent back to the tool the instructions tell it to avoid.
+
+### Version pinning
+
+`rtk` and `jdtls` are downloaded from upstream rather than installed from a
+package manager, so both are pinned to a version at the top of `install.sh`.
+Neither is a package in an ecosystem Dependabot understands — one is a GitHub
+release tarball, the other an Eclipse milestone directory — so
+`.github/workflows/bump-pinned-tools.yml` polls them weekly and opens a PR when
+something newer lands. Dependabot *is* configured, for the one thing it can see
+here: that workflow's own actions.
+
 ## Claude Code Status Line
 
 `claude/.claude/statusline.sh` shows repo, branch, worktree (when in a linked
@@ -114,7 +275,7 @@ Files that vary per machine are git-ignored and must be created locally:
 | File | Purpose |
 |------|---------|
 | `~/.secrets` | API tokens in bash syntax, sourced by both shells (see `secrets.example`) |
-| `~/.claude/settings.json` | Plugin toggles (`enabledPlugins`) and any other per-machine overrides. Not stowed — see below. |
+| `~/.claude/settings.json` | Plugin toggles (`enabledPlugins`) and any other per-machine overrides. Not stowed, but seeded from the repo baseline by `install.sh` — see below. |
 | `~/.claude/settings.local.json` | Work-specific Claude settings (API keys, env vars, hooks). Note: `enabledPlugins` is **not** read from this file by Claude Code — plugin state must live in `settings.json` |
 | `~/.claude/rules/local-*.md` | Work-specific Claude instructions (e.g. ticket-id branch and commit conventions). Only the `local-*` files are machine-local — the rest of `rules/` is stowed and shared. Gitignored so employer conventions never reach this public repo. Preferred over `~/.claude/CLAUDE.local.md`, which Claude Code documents only at *project* root, not user scope |
 | `~/.gitconfig.local` | Machine-specific git settings (e.g., email) |
@@ -156,8 +317,19 @@ machine, and `settings.local.json` is not consulted for that key at all
 So `claude/.stow-local-ignore` excludes `settings.json` from stowing, and each
 machine keeps its own real (non-symlinked) copy. `claude/.claude/settings.json`
 in this repo is the shared baseline (permissions, hooks, model, output style —
-no `enabledPlugins`); copy it to `~/.claude/settings.json` on a new machine and
-add whichever plugins that machine needs.
+no `enabledPlugins`). `install.sh` copies it to `~/.claude/settings.json` when
+that file is absent and never touches it again; `enabledPlugins` is then filled
+in per machine, by `claude plugin enable` (which `install.sh` runs for the LSP
+plugins) or by `/plugin`. Changes to the baseline don't propagate — merge them
+by hand.
+
+Be deliberate about what that seed carries. It's what makes the `protect-secrets`
+and `dangerous-git-commands` hooks run at all on a new machine, and without it
+no LSP plugin can be enabled — but the same file also sets `defaultMode: auto`,
+`skipAutoPermissionPrompt`, `skipDangerousModePermissionPrompt` and a broad Bash
+allow-list. Seeding a fresh machine therefore installs a permission posture as
+well as a safety net, on work machines included. Review the baseline before
+provisioning somewhere that warrants a stricter default.
 
 ## Platform Handling
 
@@ -165,6 +337,7 @@ macOS vs Linux differences are handled automatically:
 
 - **Fish**: `conf.d/platform.fish` detects the OS for Homebrew paths and 1Password SSH agent socket
 - **Git**: `includeIf` loads `.gitconfig.macos` or `.gitconfig.linux` for the 1Password signing program path
+- **Agent tooling**: `fd` comes from Homebrew on macOS and apt's `fd-find` (symlinked from `fdfind`) on Linux; `yq` is mikefarah's Go build on macOS and kislyuk's Python one on Linux (same basic query syntax, different advanced expressions); `rtk` uses the same pinned prebuilt-binary installer on both; `jdtls` is a Homebrew formula on macOS and a pinned Eclipse milestone tarball unpacked into `~/.local/share/jdtls` on Linux. See [Agent Tooling](#agent-tooling).
 - **Worktrunk**: `config.fish` runs `wt config shell init fish | source` only behind a `command -q wt` guard, so a freshly cloned machine doesn't error before the tool is installed. `install.sh` installs `wt` (plus `gh`/`glab`/`tmux`) cross-platform: Homebrew on macOS; on Linux, `gh` via its official apt repo, `glab` via the official `.deb` release, and `worktrunk` via `cargo install`. CLI auth (`gh auth login`, `glab auth login`) stays manual — the `issue` alias picks `gh` vs `glab` per repo from `remote_url`, not per machine.
 
 ## Secrets via 1Password
