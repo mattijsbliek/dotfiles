@@ -494,7 +494,7 @@ setup_secrets() {
 # the other never starts, with no warning from Claude Code (see README → Agent
 # Tooling). Prints the offending plugin id, or returns 1 if the coast is clear.
 lsp_extension_owner() {
-    local ext="$1" ours="$2" id plugin marketplace
+    local ext="$1" ours="$2" id plugin marketplace manifest
     while IFS= read -r id; do
         [[ -n "$id" && "$id" != "$ours" ]] || continue
         plugin="${id%@*}"
@@ -513,6 +513,20 @@ lsp_extension_owner() {
         fi
     done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value) | .key' \
         "$HOME/.claude/settings.json" 2>/dev/null)
+
+    # Local plugins under ~/.claude/skills/ are enabled by their presence alone
+    # and never appear in enabledPlugins — tsgo-lsp is one — so the loop above
+    # is blind to them. They shadow just as silently, so check them too.
+    for manifest in "$HOME"/.claude/skills/*/.claude-plugin/plugin.json; do
+        [[ -f "$manifest" ]] || continue
+        id="$(jq -r '.name // empty' "$manifest" 2>/dev/null)@skills-dir"
+        [[ "$id" != "@skills-dir" && "$id" != "$ours" ]] || continue
+        if jq -e --arg e "$ext" '.lspServers[]?.extensionToLanguage[$e]' \
+                "$manifest" &>/dev/null; then
+            echo "$id"
+            return 0
+        fi
+    done
     return 1
 }
 

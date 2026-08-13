@@ -169,8 +169,10 @@ uninstalls it where an older machine still has it, which also clears its
 The same one-owner-per-extension rule applies to `.php` and `.java`, and a work
 marketplace may well ship its own server for either — a cached or preconfigured
 Intelephense variant, say. Rather than pick a winner, `setup_claude` checks
-whether another *enabled* plugin already declares the extension and, if one
-does, names it and leaves our plugin disabled. Disable the other one and re-run
+whether another plugin already declares the extension and, if one does, names it
+and leaves our plugin disabled. Both kinds count: marketplace plugins listed in
+`enabledPlugins`, and local `~/.claude/skills/` plugins, which are enabled by
+their presence alone and so never appear there. Disable the other one and re-run
 `./install.sh` to switch.
 
 Other gotchas:
@@ -180,11 +182,14 @@ Other gotchas:
 - **`jdtls` needs a JDK 21+** to run itself, independent of what a project
   compiles against. Homebrew pulls one in; on Linux `install.sh` only warns
   (sdkman is already wired into the fish config: `sdk install java`).
-- **jdtls is pinned to a milestone**, not the `/snapshots/` nightly it used to
-  track, so two machines provisioned weeks apart get the same server. The
-  version lives in `JDTLS_VERSION` at the top of `install.sh`; the unpacked copy
-  records what it is in `~/.local/share/jdtls/.version`, so a bumped pin
-  reinstalls instead of being skipped.
+- **jdtls is pinned to a milestone on Linux**, not the `/snapshots/` nightly it
+  used to track, so two Linux machines provisioned weeks apart get the same
+  server. The version lives in `JDTLS_VERSION` at the top of `install.sh`; the
+  unpacked copy records what it is in `~/.local/share/jdtls/.version`, so a
+  bumped pin reinstalls instead of being skipped. The pin does **not** reach
+  macOS — there jdtls is a Homebrew formula, so `brew` decides the version and a
+  `JDTLS_VERSION` bump changes nothing. macOS and Linux can therefore run
+  different servers; `brew upgrade jdtls` is the macOS half.
 
 ### rtk
 
