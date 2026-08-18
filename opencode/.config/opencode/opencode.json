@@ -89,6 +89,11 @@
         "redirectUri": "http://localhost:3118/callback"
       },
       "enabled": true
+    },
+    "reui": {
+      "type": "remote",
+      "url": "https://mcp.reui.io/api/mcp?style=radix-nova",
+      "enabled": true
     }
   }
 }
