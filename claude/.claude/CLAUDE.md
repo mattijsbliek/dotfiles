@@ -68,6 +68,10 @@ don't stop at "the changes are ready" — this overrides Claude Code's default c
 committing only on explicit request. Ask before force-pushing, rewriting pushed history, merging,
 or touching a branch other than the one you're working on.
 
+If the work resolves a tracked issue, include its closing keyword (`Closes #N` / `Fixes #N`) in
+the PR/MR description — don't rely on the issue link alone, GitHub and GitLab only auto-close on
+the keyword.
+
 After opening a PR/MR, follow it through: watch the pipeline and review feedback and keep
 iterating until CI is green and the reviewer has approved. Fix pipeline failures and mechanical
 review comments yourself. Bring me feedback that changes the design or widens scope — the same
