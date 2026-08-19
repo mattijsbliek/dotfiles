@@ -27,7 +27,10 @@ function m --description "Worktree workflow helper (worktrunk + tmux + claude) a
                 if test (count $argv) -gt 2
                     wt switch --create -x claude "issue-$num-$slug" $argv[3..-1]
                 else
-                    wt switch --create -x claude "issue-$num-$slug" -- "Execute $argv[2]"
+                    # Spell out the closing keyword explicitly — left implicit,
+                    # Claude reliably opens the PR without it and the issue is
+                    # left open after merge.
+                    wt switch --create -x claude "issue-$num-$slug" -- "Execute $argv[2]. When you open the PR, include \"Closes #$num\" in the description so merging it closes this issue."
                 end
             else
                 wt switch --create -x claude $argv[2..-1]
