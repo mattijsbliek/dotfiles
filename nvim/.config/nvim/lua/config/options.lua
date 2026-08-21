@@ -58,6 +58,23 @@ opt.iskeyword:append("$")
 -- Share clipboard with the OS
 opt.clipboard = "unnamedplus"
 
+-- Over SSH there's no pbcopy/xclip/wl-copy to find, so nvim's clipboard
+-- provider detection comes up empty and yanks silently go nowhere. Route
+-- through OSC 52 instead so yanks land in the local terminal's clipboard.
+if os.getenv("SSH_TTY") then
+  vim.g.clipboard = {
+    name = "OSC 52",
+    copy = {
+      ["+"] = require("vim.ui.clipboard.osc52").copy("+"),
+      ["*"] = require("vim.ui.clipboard.osc52").copy("*"),
+    },
+    paste = {
+      ["+"] = require("vim.ui.clipboard.osc52").paste("+"),
+      ["*"] = require("vim.ui.clipboard.osc52").paste("*"),
+    },
+  }
+end
+
 -- Set encoding to UTF-8
 opt.encoding = "utf-8"
 
