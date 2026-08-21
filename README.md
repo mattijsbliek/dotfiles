@@ -280,6 +280,7 @@ Files that vary per machine are git-ignored and must be created locally:
 | `~/.claude/rules/local-*.md` | Work-specific Claude instructions (e.g. ticket-id branch and commit conventions). Only the `local-*` files are machine-local — the rest of `rules/` is stowed and shared. Gitignored so employer conventions never reach this public repo. Preferred over `~/.claude/CLAUDE.local.md`, which Claude Code documents only at *project* root, not user scope |
 | `~/.gitconfig.local` | Machine-specific git settings (e.g., email) |
 | `~/.claude.json` | User-scoped MCP servers (see below), plus Claude Code's own caches and per-project history. Never stowed — it's mostly machine state |
+| `~/.config/nvim/lua/config/local.lua` | `return { disable_lsp = true }` opts a machine out of the `lang.*` LazyVim extras (java/json/typescript/php), so Mason never force-installs LSP servers. For boxes without npm/internet egress, e.g. production servers |
 
 ### Playwright MCP server
 

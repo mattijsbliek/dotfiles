@@ -14,22 +14,33 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
-require("lazy").setup({
-  spec = {
-    -- add LazyVim and import its plugins
-    { "LazyVim/LazyVim", import = "lazyvim.plugins" },
+-- Machine-local override, e.g. on boxes where LSP servers shouldn't
+-- auto-install (no npm, no internet egress, etc). Not stowed — create
+-- lua/config/local.lua directly on that machine with `return { disable_lsp = true }`.
+local ok, localcfg = pcall(require, "config.local")
+local disable_lsp = ok and localcfg.disable_lsp
 
-    -- add extras after base import
+local spec = { { "LazyVim/LazyVim", import = "lazyvim.plugins" } }
+
+if not disable_lsp then
+  vim.list_extend(spec, {
     { import = "lazyvim.plugins.extras.lang.java" },
     { import = "lazyvim.plugins.extras.lang.json" },
     { import = "lazyvim.plugins.extras.lang.typescript" },
     { import = "lazyvim.plugins.extras.lang.php" },
-    { import = "lazyvim.plugins.extras.dap.core" },
-    { import = "lazyvim.plugins.extras.test.core" },
+  })
+end
 
-    -- import/override with your plugins
-    { import = "plugins" },
-  },
+vim.list_extend(spec, {
+  { import = "lazyvim.plugins.extras.dap.core" },
+  { import = "lazyvim.plugins.extras.test.core" },
+
+  -- import/override with your plugins
+  { import = "plugins" },
+})
+
+require("lazy").setup({
+  spec = spec,
   defaults = {
     -- By default, only LazyVim plugins will be lazy-loaded. Your custom plugins will load during startup.
     -- If you know what you're doing, you can set this to `true` to have all your custom plugins lazy-loaded by default.
