@@ -1,7 +1,7 @@
 return {
   {
     "saghen/blink.cmp",
-    branch = "v1",
+    version = "1.*",
     opts = {
       keymap = {
         ["<Tab>"] = { "accept", "snippet_forward", "fallback" },
