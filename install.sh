@@ -23,7 +23,7 @@ warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
 # --- Stow packages (directories under $DOTFILES_DIR) ---
-PACKAGES=(bash fish nvim git claude opencode starship ghostty tmux worktrunk herdr)
+PACKAGES=(bash fish nvim git claude starship ghostty worktrunk herdr)
 
 # --- Detect platform ---
 OS="$(uname -s)"
@@ -356,16 +356,6 @@ install_packages() {
             echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/$(dpkg --print-architecture) stable main" | \
                 sudo tee /etc/apt/sources.list.d/1password.list
             sudo apt update && sudo apt install -y 1password-cli
-        fi
-    fi
-
-    # tmux — terminal multiplexer (Worktrunk renames the active window per branch)
-    if ! command -v tmux &>/dev/null; then
-        info "Installing tmux..."
-        if [[ "$PLATFORM" == "macos" ]]; then
-            brew install tmux
-        else
-            sudo apt install -y tmux || warn "Could not install tmux"
         fi
     fi
 

@@ -1,4 +1,4 @@
-function m --description "Worktree workflow helper (worktrunk + tmux + claude) and misc utilities"
+function m --description "Worktree workflow helper (worktrunk + herdr + claude) and misc utilities"
     switch $argv[1]
         case start
             # m start my-feature                              → new worktree + branch, cd, rename window, launch claude
@@ -14,7 +14,7 @@ function m --description "Worktree workflow helper (worktrunk + tmux + claude) a
                 set -l title (gh issue view $num --repo "$owner/$repo" --json title -q .title)
                 or return 1
                 set -l slug (echo $title | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]' '-' | tr -s '-' | sed 's/^-*//;s/-*$//')
-                # Long titles make unwieldy worktree/branch names (tmux window titles,
+                # Long titles make unwieldy worktree/branch names (herdr tab titles,
                 # prompts, etc) — no clean way to auto-truncate without cutting words
                 # mid-word, so ask instead of guessing.
                 if test (string length -- $slug) -gt 40
@@ -36,21 +36,18 @@ function m --description "Worktree workflow helper (worktrunk + tmux + claude) a
                 wt switch --create -x claude $argv[2..-1]
             end
         case cleanup
-            # Tear down the current worktree, then kill the tmux window (or
-            # herdr tab, whichever we're running in).
+            # Tear down the current worktree, then kill the herdr tab.
             # `wt remove` refuses a dirty worktree (and deletes the branch
-            # only if it's already merged), so the window is killed only
+            # only if it's already merged), so the tab is killed only
             # when teardown actually succeeded. --foreground makes it block
             # until the directory is actually gone — otherwise removal
             # continues in the background and gets killed along with the
-            # window/tab before it finishes, leaving an empty leftover dir.
+            # tab before it finishes, leaving an empty leftover dir.
             # Extra flags pass through:
             #   m cleanup --force   remove even if dirty
             #   m cleanup --reap    also kill leftover dev servers
             wt remove --foreground $argv[2..-1]; or return 1
-            if test -n "$TMUX"
-                tmux kill-window
-            else if test -n "$HERDR_ENV"
+            if test -n "$HERDR_ENV"
                 # herdr refuses to close a tab if it's the last one in its
                 # workspace (would leave an empty workspace behind), so fall
                 # back to closing the whole workspace in that case.
@@ -60,7 +57,7 @@ function m --description "Worktree workflow helper (worktrunk + tmux + claude) a
             # Bulk-remove worktrees/branches already merged into the default
             # branch (stale ones left behind after a manual merge, forgotten
             # `m cleanup`, etc). Skips the main worktree, locked worktrees,
-            # and anything younger than 1 day. Doesn't touch tmux windows for
+            # and anything younger than 1 day. Doesn't touch herdr tabs for
             # the removed worktrees — only `m cleanup` does that.
             #   m prune --dry-run   preview without removing anything
             wt step prune $argv[2..-1]
