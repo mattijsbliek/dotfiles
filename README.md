@@ -10,11 +10,11 @@ cd ~/dotfiles
 ./install.sh
 ```
 
-The bootstrap script installs dependencies (fish, neovim, stow, starship, the `gh`/`glab` CLIs, tmux, worktrunk, `fd`, `jq`/`yq`, `rtk`, language servers, etc.), backs up existing configs, and creates symlinks via stow.
+The bootstrap script installs dependencies (fish, neovim, stow, starship, the `gh`/`glab` CLIs, worktrunk, `fd`, `jq`/`yq`, `rtk`, language servers, etc.), backs up existing configs, and creates symlinks via stow.
 
 ## Structure
 
-Eleven stow packages, each mirroring the target directory structure under `$HOME`:
+Nine stow packages, each mirroring the target directory structure under `$HOME`:
 
 ```
 bash/      → ~/.bash_profile, ~/.bashrc   Sources secrets, execs fish for interactive sessions
@@ -22,28 +22,26 @@ fish/      → ~/.config/fish/              Shell config, aliases, functions
 nvim/      → ~/.config/nvim/              LazyVim-based Neovim config
 git/       → ~/.gitconfig, etc.           Git aliases, delta pager, SSH signing
 claude/    → ~/.claude/                   Claude Code settings, hooks, skills, rules
-opencode/  → ~/.config/opencode/          opencode config, LiteLLM provider + plugins
 starship/  → ~/.config/starship.toml      Prompt configuration
 ghostty/   → ~/.config/ghostty/           Terminal emulator config (macOS)
-tmux/      → ~/.tmux.conf                 Status bar, mouse mode
-worktrunk/ → ~/.config/worktrunk/         wt aliases + env-copy/window-rename hooks
+worktrunk/ → ~/.config/worktrunk/         wt aliases + env-copy/tab-rename hooks
 herdr/     → ~/.config/herdr/config.toml  Herdr terminal manager config
 ```
 
 ## Worktree Workflow
 
 The `m` fish function (`fish/.config/fish/functions/m.fish`) wraps worktrunk +
-tmux/herdr + Claude Code into three verbs:
+herdr + Claude Code into three verbs:
 
 ```
 m start my-feature             # wt switch --create -x claude:
                                 #   creates worktree + branch, cds in,
-                                #   renames the tmux window/herdr tab, launches claude
+                                #   renames the herdr tab, launches claude
 m start my-feature -- "prompt" # same, but starts claude with an initial prompt
 m start <github-issue-url>     # worktree name derived from the issue title
                                 #   (e.g. https://github.com/OWNER/REPO/issues/2)
 m cleanup                      # wt remove (branch deleted if merged), then
-                                #   kills the tmux window/herdr tab. Refuses a dirty tree.
+                                #   kills the herdr tab. Refuses a dirty tree.
 m cleanup --force              # remove even with uncommitted changes
 m cleanup --reap               # also kill leftover dev servers in the worktree
 m prune                        # wt step prune: bulk-remove worktrees/branches
@@ -51,11 +49,11 @@ m prune                        # wt step prune: bulk-remove worktrees/branches
 m prune --dry-run              # preview what prune would remove
 ```
 
-`m cleanup` runs `wt remove` first and only kills the window/tab if it
-succeeds, so uncommitted work can't be silently destroyed. It detects tmux via
-`$TMUX` and herdr via `$HERDR_ENV`. On herdr, if the tab is the last one in its
+`m cleanup` runs `wt remove` first and only kills the tab if it
+succeeds, so uncommitted work can't be silently destroyed. It detects herdr via
+`$HERDR_ENV`. If the tab is the last one in its
 workspace, herdr refuses to close it, so `m cleanup` closes the workspace
-instead. The window/tab rename comes from the
+instead. The tab rename comes from the
 worktrunk `post-start`/`post-switch` hooks in `worktrunk/`, which use the same
 detection. `m prune` skips the main worktree, locked worktrees, and anything
 younger than a day; it's for tidying up worktrees left behind after a manual
@@ -339,7 +337,7 @@ macOS vs Linux differences are handled automatically:
 - **Fish**: `conf.d/platform.fish` detects the OS for Homebrew paths and 1Password SSH agent socket
 - **Git**: `includeIf` loads `.gitconfig.macos` or `.gitconfig.linux` for the 1Password signing program path
 - **Agent tooling**: `fd` comes from Homebrew on macOS and apt's `fd-find` (symlinked from `fdfind`) on Linux; `yq` is mikefarah's Go build on macOS and kislyuk's Python one on Linux (same basic query syntax, different advanced expressions); `rtk` uses the same pinned prebuilt-binary installer on both; `jdtls` is a Homebrew formula on macOS and a pinned Eclipse milestone tarball unpacked into `~/.local/share/jdtls` on Linux. See [Agent Tooling](#agent-tooling).
-- **Worktrunk**: `config.fish` runs `wt config shell init fish | source` only behind a `command -q wt` guard, so a freshly cloned machine doesn't error before the tool is installed. `install.sh` installs `wt` (plus `gh`/`glab`/`tmux`) cross-platform: Homebrew on macOS; on Linux, `gh` via its official apt repo, `glab` via the official `.deb` release, and `worktrunk` via `cargo install`. CLI auth (`gh auth login`, `glab auth login`) stays manual — the `issue` alias picks `gh` vs `glab` per repo from `remote_url`, not per machine.
+- **Worktrunk**: `config.fish` runs `wt config shell init fish | source` only behind a `command -q wt` guard, so a freshly cloned machine doesn't error before the tool is installed. `install.sh` installs `wt` (plus `gh`/`glab`) cross-platform: Homebrew on macOS; on Linux, `gh` via its official apt repo, `glab` via the official `.deb` release, and `worktrunk` via `cargo install`. CLI auth (`gh auth login`, `glab auth login`) stays manual — the `issue` alias picks `gh` vs `glab` per repo from `remote_url`, not per machine.
 
 ## Secrets via 1Password
 
