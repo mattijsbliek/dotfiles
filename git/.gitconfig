@@ -3,7 +3,7 @@
 	editor = nvim
 	autocrlf = input
 	excludesfile = ~/.gitignore_global
-	pager = diff-so-fancy | less --tabs=4 -RFX
+	pager = delta
 	fsmonitor = true
 	untrackedCache = true
 [user]
@@ -49,6 +49,9 @@
 	workers = 0
 [commit]
 	verbose = true
+[delta]
+	navigate = true
+	light = false
 [diff]
 	algorithm = histogram
 	colorMoved = plain
@@ -64,6 +67,8 @@
 	version = 4
 [init]
 	defaultBranch = main
+[interactive]
+	diffFilter = delta --color-only
 [lfs]
 	locksverify = false
 	setlockablereadonly = false
