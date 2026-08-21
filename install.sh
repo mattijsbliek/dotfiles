@@ -316,16 +316,30 @@ install_packages() {
         eval "$(fnm env)"
     fi
 
-    # diff-so-fancy
-    if ! command -v diff-so-fancy &>/dev/null; then
-        info "Installing diff-so-fancy..."
+    # git-delta — pager set via core.pager in .gitconfig. Standalone Rust
+    # binary, so unlike diff-so-fancy (which it replaced) it needs no Node/npm.
+    if ! command -v delta &>/dev/null; then
+        info "Installing git-delta..."
         if [[ "$PLATFORM" == "macos" ]]; then
-            brew install diff-so-fancy
+            brew install git-delta
         else
-            if command -v npm &>/dev/null; then
-                npm install -g diff-so-fancy
+            # No official apt repo; fetch the .deb from GitHub releases (same
+            # pattern as glab below).
+            local delta_arch delta_ver delta_deb
+            delta_arch="$(dpkg --print-architecture)" # amd64 / arm64
+            delta_ver="$(curl -fsSL "https://api.github.com/repos/dandavison/delta/releases/latest" \
+                | jq -r '.tag_name')" || true
+            if [[ -n "${delta_ver:-}" ]]; then
+                delta_deb="git-delta_${delta_ver}_${delta_arch}.deb"
+                if curl -fsSL -o "/tmp/${delta_deb}" \
+                    "https://github.com/dandavison/delta/releases/download/${delta_ver}/${delta_deb}"; then
+                    sudo dpkg -i "/tmp/${delta_deb}" || warn "Could not install git-delta (.deb)"
+                    rm -f "/tmp/${delta_deb}"
+                else
+                    warn "Could not download git-delta .deb; install manually: https://github.com/dandavison/delta"
+                fi
             else
-                warn "diff-so-fancy not installed (npm not available)"
+                warn "Could not determine latest git-delta version; install manually: https://github.com/dandavison/delta"
             fi
         fi
     fi

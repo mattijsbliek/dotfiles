@@ -20,7 +20,7 @@ Eleven stow packages, each mirroring the target directory structure under `$HOME
 bash/      → ~/.bash_profile, ~/.bashrc   Sources secrets, execs fish for interactive sessions
 fish/      → ~/.config/fish/              Shell config, aliases, functions
 nvim/      → ~/.config/nvim/              LazyVim-based Neovim config
-git/       → ~/.gitconfig, etc.           Git aliases, diff-so-fancy, SSH signing
+git/       → ~/.gitconfig, etc.           Git aliases, delta pager, SSH signing
 claude/    → ~/.claude/                   Claude Code settings, hooks, skills, rules
 opencode/  → ~/.config/opencode/          opencode config, LiteLLM provider + plugins
 starship/  → ~/.config/starship.toml      Prompt configuration
