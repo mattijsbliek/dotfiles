@@ -74,6 +74,17 @@
           }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash '/home/mattijs/.claude/hooks/session-end-reaper.sh'",
+            "async": true
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
