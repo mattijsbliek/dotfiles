@@ -17,9 +17,9 @@ session_id=$(printf '%s' "$payload" | grep -o '"session_id"[[:space:]]*:[[:space
 for procdir in /proc/[0-9]*; do
 	pid=${procdir#/proc/}
 	[ -r "$procdir/environ" ] || continue
-	env_sid=$(tr '\0' '\n' <"$procdir/environ" 2>/dev/null | grep '^CLAUDE_CODE_SESSION_ID=' | cut -d= -f2-)
+	env_sid=$(tr '\0' '\n' 2>/dev/null <"$procdir/environ" | grep '^CLAUDE_CODE_SESSION_ID=' | cut -d= -f2-)
 	[ "$env_sid" = "$session_id" ] || continue
-	cmd=$(tr '\0' ' ' <"$procdir/cmdline" 2>/dev/null)
+	cmd=$(tr '\0' ' ' 2>/dev/null <"$procdir/cmdline")
 	[[ "$cmd" =~ $DEV_SERVER_PATTERN ]] || continue
 	printf '%s  session %s  killing pid %s: %s\n' "$(date -Is)" "$session_id" "$pid" "$cmd" >>"$LOG"
 	kill -TERM "$pid" 2>/dev/null
