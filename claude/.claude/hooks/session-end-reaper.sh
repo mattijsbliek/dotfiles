@@ -8,7 +8,7 @@
 set -uo pipefail
 
 LOG=/home/mattijs/.claude/dev-server-reaper.log
-DEV_SERVER_PATTERN='astro .*\bdev\b|vite( |$)|next dev|nuxt dev|webpack-dev-server|ng serve|flask run|uvicorn .*--reload|rails server|php artisan serve|php -S |django.*runserver|run dev\b|run start\b'
+DEV_SERVER_PATTERN='astro .*\bdev\b|vite( |$)|next dev|nuxt dev|webpack-dev-server|ng serve|flask run|uvicorn .*--reload|rails server|php artisan serve|php -S |django.*runserver|run dev\b|run start\b|dev-lan\.mjs'
 
 payload=$(cat)
 session_id=$(printf '%s' "$payload" | grep -o '"session_id"[[:space:]]*:[[:space:]]*"[^"]*"' | sed -E 's/.*:"([^"]*)"/\1/')
