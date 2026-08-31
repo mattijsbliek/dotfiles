@@ -9,7 +9,7 @@ BACKUP_DIR="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
 # bumped by .github/workflows/bump-pinned-tools.yml, which opens a PR when a
 # newer version appears upstream. Keep the assignments on one line each — the
 # workflow rewrites them with sed.
-RTK_VERSION="v0.45.0"
+RTK_VERSION="v0.46.0"
 JDTLS_VERSION="1.60.0"
 
 # --- Colors ---
