@@ -61,6 +61,9 @@ opt.clipboard = "unnamedplus"
 -- Over SSH there's no pbcopy/xclip/wl-copy to find, so nvim's clipboard
 -- provider detection comes up empty and yanks silently go nowhere. Route
 -- through OSC 52 instead so yanks land in the local terminal's clipboard.
+-- Paste is left as a no-op: with clipboard=unnamedplus, every register read
+-- (not just explicit pastes) would otherwise block waiting for an OSC 52
+-- response, which most SSH relays/multiplexers never send.
 if os.getenv("SSH_TTY") then
   vim.g.clipboard = {
     name = "OSC 52",
@@ -69,8 +72,8 @@ if os.getenv("SSH_TTY") then
       ["*"] = require("vim.ui.clipboard.osc52").copy("*"),
     },
     paste = {
-      ["+"] = require("vim.ui.clipboard.osc52").paste("+"),
-      ["*"] = require("vim.ui.clipboard.osc52").paste("*"),
+      ["+"] = function() return {} end,
+      ["*"] = function() return {} end,
     },
   }
 end
