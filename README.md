@@ -31,7 +31,7 @@ herdr/     → ~/.config/herdr/config.toml  Herdr terminal manager config
 ## Worktree Workflow
 
 The `m` fish function (`fish/.config/fish/functions/m.fish`) wraps worktrunk +
-herdr + Claude Code into three verbs:
+herdr + Claude Code into four verbs:
 
 ```
 m start my-feature             # wt switch --create -x claude:
@@ -40,6 +40,10 @@ m start my-feature             # wt switch --create -x claude:
 m start my-feature -- "prompt" # same, but starts claude with an initial prompt
 m start <github-issue-url>     # worktree name derived from the issue title
                                 #   (e.g. https://github.com/OWNER/REPO/issues/2)
+m switch my-feature             # wt switch -x claude: switches to an existing
+                                #   worktree/branch, cds in, renames the herdr
+                                #   tab, launches claude
+m switch my-feature -- "prompt" # same, but starts claude with an initial prompt
 m cleanup                      # wt remove (branch deleted if merged), then
                                 #   kills the herdr tab. Refuses a dirty tree.
 m cleanup --force              # remove even with uncommitted changes

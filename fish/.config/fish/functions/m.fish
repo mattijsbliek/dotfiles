@@ -35,6 +35,10 @@ function m --description "Worktree workflow helper (worktrunk + herdr + claude) 
             else
                 wt switch --create -x claude $argv[2..-1]
             end
+        case switch
+            # m switch mattijs/case-hub-data-grid              → switch to an existing worktree/branch, cd, rename window, launch claude
+            # m switch mattijs/case-hub-data-grid -- "prompt"  → same, but starts claude with an initial prompt
+            wt switch -x claude $argv[2..-1]
         case cleanup
             # Tear down the current worktree, then kill the herdr tab.
             # `wt remove` refuses a dirty worktree (and deletes the branch
@@ -84,6 +88,7 @@ function m --description "Worktree workflow helper (worktrunk + herdr + claude) 
             echo $remote_path
         case '*'
             echo "usage: m start <name> [-- <claude prompt>]"
+            echo "       m switch <branch> [-- <claude prompt>]"
             echo "       m cleanup [--force] [--reap]"
             echo "       m prune [--dry-run] [--min-age <duration>]"
             echo "       m paste-image"
